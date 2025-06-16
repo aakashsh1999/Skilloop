@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { use, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ import OtpModal from "@/components/OTPModal";
 import { API_BASE_URL } from "@/env";
 import { useRouter } from "expo-router";
 import { useSession } from "@/utils/AuthContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 // --- PhoneInput Component (Inline) ---
 interface PhoneInputProps {
   onPhoneChange: (phone: string) => void;

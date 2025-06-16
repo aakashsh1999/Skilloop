@@ -1,5 +1,6 @@
 import ActionButton from "@/components/ActionButton";
 import PageHeader from "@/components/PageHeader";
+import QuestionHeader from "@/components/PageHeader/QuestionHeader";
 import { useProfileStore } from "@/store/useProfileStore";
 import { useNavigation } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -60,12 +61,9 @@ const UserTypeSelection: React.FC = () => {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <PageHeader
-        title="I am a..."
-        subtitle="select what describes you"
-        currentStep={1}
-        totalSteps={6}
-      />
+      <PageHeader currentStep={1} totalSteps={6} />
+
+      <QuestionHeader title="I am a..." subtitle="select what describes you" />
 
       <View style={styles.optionList}>
         {USER_TYPES.map((userType) => (
@@ -100,6 +98,7 @@ const UserTypeSelection: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     padding: 16,
+    flex: 1,
     paddingBottom: 32,
     backgroundColor: "#fff",
   },
@@ -107,12 +106,15 @@ const styles = StyleSheet.create({
     marginBottom: 48,
   },
   optionCard: {
-    borderWidth: 2,
-    borderColor: "#e5e7eb", // gray-200
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "black", // gray-200
+    borderRadius: 30,
+    paddingVertical: 20,
+    paddingHorizontal: 28,
+    paddingBottom: 32,
+    marginBottom: 20,
     backgroundColor: "#fff",
+    shadowColor: "#000",
   },
   optionCardSelected: {
     borderColor: "#fb923c", // orange-400
@@ -124,11 +126,13 @@ const styles = StyleSheet.create({
   },
   optionTitle: {
     fontSize: 20,
-    fontWeight: "bold",
+    fontFamily: "MontserratBold",
+    fontWeight: "500",
     marginBottom: 4,
   },
   optionDescription: {
     color: "#6b7280", // gray-500
+    fontFamily: "Montserrat",
   },
   optionEmoji: {
     fontSize: 28,

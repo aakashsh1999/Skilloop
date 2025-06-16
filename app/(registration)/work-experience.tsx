@@ -4,7 +4,7 @@ import ItemCard from "@/components/ItemCard";
 import PageHeader from "@/components/PageHeader";
 import { useToast } from "@/hooks/useToast";
 import { useProfileStore } from "@/store/useProfileStore";
-import { formatDate } from "@/utils/dateUtils";
+import { formatDate, formatDateForDisplay } from "@/utils/dateUtils";
 import { useNavigation } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -20,6 +20,7 @@ import {
   ActivityIndicator, // Import ActivityIndicator for loading state
 } from "react-native";
 import { API_BASE_URL } from "@/env";
+import QuestionHeader from "@/components/PageHeader/QuestionHeader";
 
 // IMPORTANT: MAKE SURE THIS NGROK URL IS CURRENT AND MATCHES YOUR ACTIVE NGROK TUNNEL!
 // Ngrok free tunnels change every time you restart ngrok.
@@ -33,6 +34,7 @@ const WorkExperienceScreen = () => {
     removeWorkExperience,
     setCurrentStep,
     completeStep,
+    resetProfile,
     // If you have a resetProfile function, use it here after successful registration
     // resetProfile,
   } = useProfileStore();
@@ -132,6 +134,7 @@ const WorkExperienceScreen = () => {
       description: "Your work experience has been successfully added.",
     });
   };
+  console.log(profile, "sss");
 
   const handleRemoveExperience = (id: string) => {
     // Added type for clarity
@@ -189,6 +192,7 @@ const WorkExperienceScreen = () => {
         description: "Your full profile has been successfully registered.",
         variant: "success",
       });
+      resetProfile(); // Reset profile store to initial state
 
       // Navigate to the next screen after successful API call
       router.push("/(registration)/profile-complete"); // Or wherever the final step leads
@@ -219,7 +223,6 @@ const WorkExperienceScreen = () => {
       });
       return;
     }
-    console.log(mobileNumber, "working");
 
     const dataToSend = {
       mobile_number: mobileNumber,
@@ -229,11 +232,11 @@ const WorkExperienceScreen = () => {
       age: profile.basicInfo?.age ? parseInt(profile.basicInfo.age, 10) : 0,
       location: profile.basicInfo?.location || "Unknown Location",
 
-      latitude: profile.location?.latitude
-        ? parseFloat(profile.location.latitude)
+      latitude: profile.basicInfo?.latitude
+        ? parseFloat(profile?.basicInfo?.latitude)
         : null,
-      longitude: profile.location?.longitude
-        ? parseFloat(profile.location.longitude)
+      longitude: profile.basicInfo?.longitude
+        ? parseFloat(profile?.basicInfo?.longitude)
         : null,
 
       profile_image:
@@ -262,18 +265,6 @@ const WorkExperienceScreen = () => {
       certificates: profile.certificates || [],
       work_experience: profile.workExperience || [],
     };
-
-    console.log(
-      "✅ Final data to send (handleContinue):",
-      JSON.stringify(dataToSend, null, 2)
-    );
-
-    console.log(profile, "mobile");
-
-    // console.log(
-    //   "Final data to send (handleContinue):",
-    //   JSON.stringify(dataToSend, null, 2)
-    // );
 
     await sendProfileDataToBackend(dataToSend);
   };
@@ -317,11 +308,6 @@ const WorkExperienceScreen = () => {
       work_experience: profile.workExperience || [], // Will be an empty array if user skipped adding
     };
 
-    console.log(
-      "Final data to send (handleSkip):",
-      JSON.stringify(dataToSend, null, 2)
-    );
-
     await sendProfileDataToBackend(dataToSend);
   };
 
@@ -330,9 +316,13 @@ const WorkExperienceScreen = () => {
       <PageHeader
         title="Work Experience"
         subtitle="Add your professional experience to highlight your career path"
-        currentStep={5}
+        currentStep={6}
         totalSteps={6}
         onBack={handleBack}
+      />
+      <QuestionHeader
+        title="Work Experience"
+        subtitle="Add your professional experience to highlight your career path"
       />
 
       {profile.workExperience.length > 0 && (
@@ -343,12 +333,12 @@ const WorkExperienceScreen = () => {
               logo={experience.logo || undefined}
               logoPlaceholder={experience.company ? experience.company[0] : ""}
               title={experience.position}
-              subtitle={`${experience.company} • ${formatDate(
+              subtitle={`${experience.company} • ${formatDateForDisplay(
                 experience.startDate
               )} - ${
                 experience.currentlyWorking
                   ? "Present"
-                  : formatDate(experience.endDate || "")
+                  : formatDateForDisplay(experience.endDate || "")
               }`}
               onRemove={() => handleRemoveExperience(experience.id)}
             />
@@ -358,7 +348,7 @@ const WorkExperienceScreen = () => {
 
       <AddItemButton
         onPress={() => setIsDialogOpen(true)}
-        label="+ Add Experience"
+        label="Add Experience"
         style={styles.addButton}
       />
 
@@ -371,6 +361,8 @@ const WorkExperienceScreen = () => {
           onPress={handleSkip}
           variant="outline"
           fullWidth
+          style={styles.skipButton}
+          textStyle={styles.skipButtonText}
           disabled={loading}
         >
           {loading ? <ActivityIndicator color="#000" /> : "Skip for now"}
@@ -404,7 +396,7 @@ const WorkExperienceScreen = () => {
             style={styles.input}
             value={formData.startDate}
             onChangeText={(text) => handleChange("startDate", text)}
-            keyboardType="numeric"
+            keyboardType="alphanumeric"
             maxLength={7}
           />
 
@@ -422,7 +414,7 @@ const WorkExperienceScreen = () => {
               style={styles.input}
               value={formData.endDate}
               onChangeText={(text) => handleChange("endDate", text)}
-              keyboardType="numeric"
+              keyboardType="alphanumeric"
               maxLength={7}
             />
           )}
@@ -452,7 +444,7 @@ const WorkExperienceScreen = () => {
 const styles = StyleSheet.create({
   container: {
     padding: 16,
-    flexGrow: 1,
+    flex: 1,
     backgroundColor: "#fff",
   },
   listContainer: {
@@ -499,6 +491,16 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     backgroundColor: "orange",
+  },
+  skipButton: {
+    // Custom style for the skip button, making it distinct from "Continue"
+    backgroundColor: "#A9A9A9", // Darker gray
+    borderColor: "#696969", // Even darker gray border
+    marginTop: 40,
+  },
+  skipButtonText: {
+    // If you want different text style for skip
+    color: "white",
   },
 });
 

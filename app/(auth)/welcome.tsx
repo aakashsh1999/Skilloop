@@ -175,7 +175,7 @@ export default function App() {
             style={styles.getStartedButton}
             onPress={() => router.push("/login")}
           >
-            <Text style={styles.getStartedText}>Get Started</Text>{" "}
+            <Text style={styles.getStartedText}>Get Started</Text><Text> </Text>
             <Ionicons name="arrow-redo-outline" size={24} color="white" />
           </TouchableOpacity>
 

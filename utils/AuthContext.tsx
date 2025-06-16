@@ -42,7 +42,6 @@ export default function SessionProvider({ children }: PropsWithChildren) {
     <AuthContext.Provider
       value={{
         signIn: async (userData: string) => {
-          console.log(userData, "asdfsdf");
           // When signing in, set the new session token
           // This would typically come from an authentication API response
           setSession(userData);

@@ -52,6 +52,8 @@ const initialProfile: UserProfile = {
     age: "",
     gender: "",
     location: "",
+    latitude: null,
+    longitude: null,
   },
   userType: "freelancer",
   profileImages: [],

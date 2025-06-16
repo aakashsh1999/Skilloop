@@ -1,5 +1,6 @@
 import ActionButton from "@/components/ActionButton";
 import PageHeader from "@/components/PageHeader";
+import QuestionHeader from "@/components/PageHeader/QuestionHeader";
 import { useProfileStore } from "@/store/useProfileStore";
 import { Feather } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -94,13 +95,8 @@ const MiscScreen: React.FC = () => {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <PageHeader
-        title="Misc"
-        subtitle="Add your skills and bio"
-        currentStep={6}
-        totalSteps={6}
-        onBack={handleBack}
-      />
+      <PageHeader currentStep={4} totalSteps={6} onBack={handleBack} />
+      <QuestionHeader title="Misc" subtitle="Add your skills and bio" />
 
       <Text style={styles.label}>Search your skill</Text>
       <TextInput
@@ -160,8 +156,10 @@ const MiscScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
     backgroundColor: "#fff",
+    flex: 1,
   },
   header: {
     fontSize: 24,
@@ -177,6 +175,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
     marginBottom: 8,
+    fontFamily: "Montserrat",
   },
   input: {
     borderWidth: 1,
@@ -190,7 +189,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
-    marginBottom: 16,
+    marginVertical: 16,
   },
   tag: {
     backgroundColor: "#F3F4F6",
@@ -199,8 +198,9 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   tagText: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: "500",
+    fontFamily: "Montserrat",
   },
   skillTag: {
     flexDirection: "row",
@@ -216,6 +216,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E5E7EB",
     borderRadius: 8,
+    height: 150,
     padding: 12,
     textAlignVertical: "top",
     marginBottom: 24,

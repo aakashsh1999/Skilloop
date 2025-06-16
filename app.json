@@ -9,14 +9,16 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.aakashsh1999.Skilloop"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.aakashsh1999.Skilloop"
     },
     "web": {
       "bundler": "metro",
@@ -43,6 +45,12 @@
       "eas": {
         "projectId": "6575ecc2-8303-44cb-a4e3-70239d21d089"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/6575ecc2-8303-44cb-a4e3-70239d21d089"
     }
   }
 }

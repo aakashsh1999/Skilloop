@@ -1,5 +1,6 @@
 import ActionButton from "@/components/ActionButton";
 import PageHeader from "@/components/PageHeader";
+import QuestionHeader from "@/components/PageHeader/QuestionHeader";
 import { useProfileStore } from "@/store/useProfileStore";
 import { useNavigation } from "@react-navigation/native";
 import { useRouter } from "expo-router";
@@ -127,12 +128,10 @@ const BusinessCard: React.FC = () => {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <PageHeader
+      <PageHeader currentStep={3} totalSteps={6} onBack={handleBack} />
+      <QuestionHeader
         title="Your Business Card"
         subtitle="Your quick identity card — this is what others will see first."
-        currentStep={3}
-        totalSteps={6}
-        onBack={handleBack}
       />
 
       <View style={styles.inputGroup}>
@@ -222,6 +221,7 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: "white",
     flexGrow: 1,
+    flex: 1,
   },
   inputGroup: {
     marginBottom: 20,
@@ -230,6 +230,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#4B5563",
     marginBottom: 6,
+    fontFamily: "Montserrat",
   },
   input: {
     borderWidth: 1,
@@ -238,11 +239,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: Platform.OS === "ios" ? 14 : 10,
     fontSize: 16,
+    fontFamily: "MontserratBold",
   },
   help: {
     fontSize: 12,
     color: "#9CA3AF",
     marginTop: 4,
+    textAlign: "center",
+    fontFamily: "Montserrat",
   },
   socialContainer: {
     marginBottom: 24,
@@ -252,11 +256,13 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: "#4B5563",
     marginBottom: 8,
+    fontFamily: "Montserrat",
   },
   iconRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    marginBottom: 12,
+    justifyContent: "space-evenly",
+    marginVertical: 12,
   },
   iconCircle: {
     width: 40,

@@ -48,6 +48,8 @@ export interface BasicInfo {
   age: string;
   gender: string;
   location: string;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 export interface ProfileImage {

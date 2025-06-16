@@ -1,419 +1,361 @@
-// screens/ConnectionsScreen.js
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
-  FlatList,
-  Image,
-  Linking,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
   View,
+  Text,
+  FlatList,
+  StyleSheet,
   ActivityIndicator,
   Alert,
+  RefreshControl,
+  Platform,
+  StatusBar,
 } from "react-native";
 import {
-  Feather,
-  FontAwesome,
-  MaterialCommunityIcons,
-  Ionicons,
-} from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { API_BASE_URL } from "../../env"; // Make sure this is correct
+  LikesAPI,
+  MatchesAPI,
+  LikerProfile,
+  MatchedUserProfile,
+} from "@/api/index";
 import { useSession } from "@/utils/AuthContext";
+import { router } from "expo-router";
+import SummaryCard, { ProfileSummaryData } from "@/components/SummarCard";
 
-const getSocialIcon = (type) => {
-  switch (type) {
-    case "linkedin":
-      return {
-        Component: FontAwesome,
-        name: "linkedin-square",
-        color: "#0A66C2",
-      };
-    case "instagram":
-      return { Component: FontAwesome, name: "instagram", color: "#E4405F" };
-    case "email":
-      return { Component: Feather, name: "mail", color: "#000" };
-    case "whatsapp":
-      return {
-        Component: MaterialCommunityIcons,
-        name: "whatsapp",
-        color: "#25D366",
-      };
-    case "upwork":
-      return {
-        Component: MaterialCommunityIcons,
-        name: "upwork",
-        color: "#64BF33",
-      };
-    case "dribbble":
-      return {
-        Component: MaterialCommunityIcons,
-        name: "dribbble",
-        color: "#EA4C89",
-      };
-    default:
-      return null;
-  }
-};
-const SummaryCard = ({
-  profileData,
-  handleLinkPress,
-  onApprove,
-  onChatPress,
-}) => {
-  const [isApproved, setIsApproved] = useState(profileData.isApproved || false);
+// 1. ENHANCE CombinedProfileData: Add `matchId`
+interface CombinedProfileData extends ProfileSummaryData {
+  sortDate: string; // The date used for sorting (likedAt or matchedAt)
+  isLikedYou: boolean; // True if this entry represents a "liked you" relationship
+  isMutualMatch: boolean; // True if this entry represents a mutual match
+  matchId?: string; // NEW: Optional matchId for mutual matches
+}
 
-  const handleApprovePress = async () => {
-    try {
-      await onApprove(profileData.id);
-      setIsApproved(true);
-      Alert.alert("Success", "Match approved! You can now chat.");
-    } catch (error) {
-      Alert.alert("Error", error.message || "Failed to approve match.");
-    }
-  };
-  return (
-    <View style={styles.summaryCard}>
-      <Image
-        source={{
-          uri: profileData?.avatar || "https://via.placeholder.com/150",
-        }}
-        style={styles.avatar}
-      />
-      <View style={styles.summaryContent}>
-        <Text style={styles.summaryJobTitle}>
-          {profileData?.title || "N/A"}
-        </Text>
-        {profileData.website && (
-          <TouchableOpacity
-            onPress={() => handleLinkPress(profileData.website)}
-          >
-            <Text style={styles.summaryWebsiteLink}>Website/Portfolio</Text>
-          </TouchableOpacity>
-        )}
-        <View style={styles.summarySocialIcons}>
-          {profileData.socialLinks &&
-            Array.isArray(profileData.socialLinks) &&
-            profileData.socialLinks.map((link, index) => {
-              const iconInfo = getSocialIcon(link.type);
-              if (!iconInfo) return null;
-              const IconComponent = iconInfo.Component;
-              return (
-                <TouchableOpacity
-                  key={index}
-                  onPress={() => handleLinkPress(link.url)}
-                  style={styles.socialIcon}
-                >
-                  <IconComponent
-                    name={iconInfo.name}
-                    size={20}
-                    color={iconInfo.color || "#555"}
-                  />
-                </TouchableOpacity>
-              );
-            })}
-        </View>
-      </View>
+const LikesYouScreen = () => {
+  const { session } = useSession();
+  const loggedInUserId =
+    typeof session === "string"
+      ? session
+      : session?.userId || session?.id || null;
 
-      <View style={{ paddingLeft: 10 }}>
-        {isApproved ? (
-          <TouchableOpacity onPress={onChatPress}>
-            <Ionicons name="chatbubble-ellipses" size={28} color="#007AFF" />
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity onPress={handleApprovePress}>
-            <Ionicons name="checkmark-circle-outline" size={28} color="green" />
-          </TouchableOpacity>
-        )}
-      </View>
-    </View>
-  );
-};
+  const [combinedProfiles, setCombinedProfiles] = useState<
+    CombinedProfileData[]
+  >([]);
+  const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-const ConnectionsScreen = () => {
-  const [likedByUsers, setLikedByUsers] = useState([]);
-  const [loadingLikes, setLoadingLikes] = useState(true);
-  const [errorLikes, setErrorLikes] = useState(null);
-
-  const router = useRouter();
-  const { session } = useSession(); // user ID
-
-  // Function to open chat screen
-  const openChatScreen = (user) => {
-    router.push(
-      `/chat-screen?chatWithUserId=${encodeURIComponent(
-        user.id
-      )}&chatWithUserName=${encodeURIComponent(user.name)}`
-    );
-  };
-
-  useEffect(() => {
-    const fetchUsersWhoLikedMe = async () => {
-      if (!session) {
-        setLoadingLikes(false);
+  const fetchCombinedProfiles = useCallback(
+    async (isInitialOrRefresh: boolean = false) => {
+      if (!loggedInUserId) {
+        setLoading(false);
+        setIsRefreshing(false);
         return;
       }
+
+      if (loading && !isInitialOrRefresh) return;
+      if (isRefreshing && !isInitialOrRefresh) return;
+
+      if (isInitialOrRefresh) {
+        setIsRefreshing(true);
+        setCombinedProfiles([]); // Clear data for fresh load
+      }
+      setLoading(true);
+
       try {
-        setLoadingLikes(true);
-        setErrorLikes(null);
-
-        const response = await fetch(
-          `${API_BASE_URL}/api/likes/liked-by/${session}`
+        const likesResponse = await LikesAPI.getReceivedLikes(
+          loggedInUserId,
+          1,
+          100
         );
+        const allLikes: LikerProfile[] = likesResponse.likers;
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || "Failed to fetch likes.");
-        }
+        const allMatches: MatchedUserProfile[] =
+          await MatchesAPI.getUserMatches(loggedInUserId);
 
-        const data = await response.json();
+        const profilesMap = new Map<string, CombinedProfileData>();
 
-        // Add isApproved flag based on your match logic (false by default)
-        // You may want to enhance this by fetching existing matches and checking approved state
-        const formattedLikes = data.map((user) => {
-          const socialLinksFromBusinessCard =
-            user.business_card?.socialProfiles?.map((profile) => ({
-              type: profile.platform.toLowerCase(),
+        // 2. UPDATE fetchCombinedProfiles: Store `match.id` for mutual matches
+        allMatches.forEach((match) => {
+          const socialLinks =
+            match.socialLinks?.map((profile) => ({
+              type: profile.type.toLowerCase(),
               url: profile.url,
             })) || [];
 
-          return {
-            id: user.id,
-            avatar: user.profile_image || "https://via.placeholder.com/150",
-            name: user.name || "Unknown",
-            title:
-              user.business_card?.role || user.short_bio || "No title provided",
-            website: user.business_card?.portfolio || null,
-            socialLinks: socialLinksFromBusinessCard,
-            isApproved: false, // default, update if needed by fetching matches
-          };
+          profilesMap.set(match.id, {
+            id: match.id,
+            name: match.name,
+            age: match.age,
+            gender: match.gender,
+            avatar: match.avatar || match.profile_image,
+            profile_image: match.profile_image,
+            title: match.title || "No title provided",
+            website: match.website,
+            socialLinks: socialLinks,
+            matched: true,
+            isApproved: true,
+            sortDate: match.matchedAt,
+            isLikedYou: false,
+            isMutualMatch: true,
+            matchId: match.matchId, // Store the match ID here!
+          });
         });
 
-        setLikedByUsers(formattedLikes);
+        allLikes.forEach((liker) => {
+          if (!profilesMap.has(liker.id)) {
+            const socialLinks =
+              liker.business_card?.socialProfiles?.map((profile) => ({
+                type: profile.platform.toLowerCase(),
+                url: profile.url,
+              })) || [];
+
+            profilesMap.set(liker.id, {
+              id: liker.id,
+              name: liker.name,
+              age: liker.age,
+              gender: liker.gender,
+              avatar: liker.avatar || liker.profile_image,
+              profile_image: liker.profile_image,
+              title:
+                liker.business_card?.role ||
+                liker.short_bio ||
+                "No title provided",
+              website: liker.business_card?.portfolio || null,
+              socialLinks: socialLinks,
+              matched: false,
+              isApproved: false,
+              sortDate: liker.createdAt,
+              isLikedYou: true,
+              isMutualMatch: false,
+              matchId: undefined, // No matchId for pending likes
+            });
+          }
+        });
+
+        const sortedCombinedProfiles = Array.from(profilesMap.values()).sort(
+          (a, b) =>
+            new Date(b.sortDate).getTime() - new Date(a.sortDate).getTime()
+        );
+
+        setCombinedProfiles(sortedCombinedProfiles);
       } catch (err) {
-        console.error("Error fetching likes:", err);
-        setErrorLikes(err.message || "Something went wrong.");
+        console.error("Error fetching combined profiles:", err);
         Alert.alert(
           "Error",
-          err.message || "Failed to load users who liked you."
+          (err as Error).message || "Failed to load connections."
         );
       } finally {
-        setLoadingLikes(false);
+        setLoading(false);
+        setIsRefreshing(false);
       }
-    };
+    },
+    [loggedInUserId]
+  );
 
-    fetchUsersWhoLikedMe();
-  }, [session]);
+  useEffect(() => {
+    if (loggedInUserId) {
+      fetchCombinedProfiles(true);
+    }
+  }, [loggedInUserId, fetchCombinedProfiles]);
 
-  const approveMatch = async (likedUserId) => {
-    console.log("Approving match:", likedUserId, session);
-    if (!session) return;
-    try {
-      const res = await fetch(
-        `${API_BASE_URL}/api/likes/matches/${likedUserId}/approve`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId: session, likedUserId }),
+  const handleApproveMatch = useCallback(
+    async (otherUserId: string) => {
+      if (!loggedInUserId) {
+        Alert.alert("Error", "User session not found.");
+        return;
+      }
+
+      try {
+        const result = await MatchesAPI.approveMatch(
+          loggedInUserId,
+          otherUserId
+        );
+
+        // 3. UPDATE handleApproveMatch: Set `matchId` when a new match occurs
+        setCombinedProfiles((prev) =>
+          prev
+            .map((profile) => {
+              if (profile.id === otherUserId) {
+                return {
+                  ...profile,
+                  isApproved: true,
+                  matched: result.matched,
+                  isMutualMatch: result.matched,
+                  sortDate: result.matched
+                    ? result.match.matchedAt // Use new matchedAt
+                    : profile.sortDate,
+                  matchId: result.matched // Set matchId if it's a mutual match
+                    ? result.match.id
+                    : profile.matchId, // Keep existing if not a new match
+                };
+              }
+              return profile;
+            })
+            .sort(
+              (a, b) =>
+                new Date(b.sortDate).getTime() - new Date(a.sortDate).getTime()
+            )
+        );
+
+        if (result.matched) {
+          Alert.alert("Congratulations!", "It's a match! You can now chat.");
+        } else {
+          Alert.alert(
+            "Approval Sent",
+            result.message ||
+              "Approval recorded. Waiting for the other person to approve."
+          );
         }
-      );
+        return result;
+      } catch (err) {
+        console.error("Error approving match:", err);
+        const errorMessage =
+          (err as Error).message || "An unexpected error occurred.";
+        Alert.alert("Error", errorMessage);
+        throw err;
+      }
+    },
+    [loggedInUserId]
+  );
 
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || "Failed to approve match");
+  const openChatScreen = useCallback(
+    (user: CombinedProfileData) => {
+      // Change type to CombinedProfileData to access matchId
+      if (!loggedInUserId) {
+        Alert.alert("Error", "User session not found.");
+        return;
+      }
+      if (!user.isMutualMatch || !user.matchId) {
+        // Check isMutualMatch and if matchId exists
+        Alert.alert("Error", "Chat is only available for mutual matches.");
+        return;
       }
 
-      return await res.json();
-    } catch (err) {
-      throw err;
-    }
+      // 4. MODIFY openChatScreen: Pass the matchId
+      router.push({
+        pathname: "/chat/[id]",
+        params: {
+          id: user.id, // This is the otherUserId for the chat screen
+          userName: user.name,
+          userAvatar: user.avatar || user.profile_image || "",
+          matchId: user.matchId, // Pass the matchId here!
+        },
+      });
+    },
+    [loggedInUserId]
+  );
+
+  const renderFooter = () => {
+    return null;
   };
 
-  const handleLinkPress = async (url) => {
-    if (await Linking.canOpenURL(url)) {
-      await Linking.openURL(url);
-    } else {
-      Alert.alert("Cannot Open Link", "Could not open the URL: " + url);
+  const renderEmptyComponent = () => {
+    if (!loading && !isRefreshing && combinedProfiles.length === 0) {
+      return (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No connections yet.</Text>
+          <Text style={styles.emptySubText}>
+            Keep swiping to find new people!
+          </Text>
+        </View>
+      );
     }
+    return null;
   };
+
+  if (loading && combinedProfiles.length === 0 && !isRefreshing) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={{ marginTop: 10 }}>Loading connections...</Text>
+      </View>
+    );
+  }
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <View style={{ marginHorizontal: 15 }}>
-        <Text style={styles.title}>Your Connections</Text>
-        <Text style={{ color: "#555", marginVertical: 10 }}>
-          Connections fetching is disabled. (You can re-enable your `getMatches`
-          logic here if needed.)
-        </Text>
-
-        <Text style={[styles.title, { marginTop: 30 }]}>
-          People Who Liked You
-        </Text>
-
-        {loadingLikes ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#0000ff" />
-            <Text>Loading people who liked you...</Text>
-          </View>
-        ) : errorLikes ? (
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>{errorLikes}</Text>
-            <TouchableOpacity
-              style={styles.retryButton}
-              onPress={() => {
-                setErrorLikes(null);
-                setLoadingLikes(true);
-                // Re-fetch likes:
-                (async () => {
-                  try {
-                    const response = await fetch(
-                      `${API_BASE_URL}/api/likes/liked-by/${session}`
-                    );
-                    if (!response.ok) throw new Error("Failed to fetch likes");
-                    const data = await response.json();
-                    setLikedByUsers(data);
-                  } catch (err) {
-                    setErrorLikes(err.message);
-                  } finally {
-                    setLoadingLikes(false);
-                  }
-                })();
-              }}
-            >
-              <Text style={styles.retryButtonText}>Retry</Text>
-            </TouchableOpacity>
-          </View>
-        ) : likedByUsers.length === 0 ? (
-          <View style={styles.noConnectionsContainer}>
-            <Text style={styles.noConnectionsText}>
-              No users have liked you yet.
-            </Text>
-            <Text style={styles.noConnectionsSubText}>
-              Keep your profile awesome!
-            </Text>
-          </View>
-        ) : (
-          <FlatList
-            data={likedByUsers}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <SummaryCard
-                profileData={item}
-                handleLinkPress={handleLinkPress}
-                onApprove={approveMatch}
-                onChatPress={() => openChatScreen(item)}
-              />
-            )}
-            scrollEnabled={false}
-            contentContainerStyle={{ paddingBottom: 20 }}
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>My Connections</Text>
+      </View>
+      <FlatList
+        data={combinedProfiles}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <SummaryCard
+            profileData={item}
+            onApprove={handleApproveMatch}
+            onChatPress={openChatScreen}
           />
         )}
-      </View>
-    </ScrollView>
+        ListFooterComponent={renderFooter}
+        ListEmptyComponent={renderEmptyComponent}
+        contentContainerStyle={
+          combinedProfiles.length === 0 && !loading && !isRefreshing
+            ? styles.emptyListContent
+            : {}
+        }
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={() => fetchCombinedProfiles(true)}
+            tintColor="#007AFF"
+            colors={["#007AFF"]}
+          />
+        }
+      />
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "white",
+    backgroundColor: "#f0f0f0",
   },
-  title: {
+  centerContent: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  header: {
+    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight + 10 : 50,
+    paddingBottom: 15,
+    backgroundColor: "white",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 10,
+  },
+  headerTitle: {
     fontSize: 22,
     fontWeight: "bold",
-    marginVertical: 20,
+    color: "#333",
   },
-  summaryCard: {
-    backgroundColor: "white",
-    padding: 15,
-    borderRadius: 60,
-    marginBottom: 20,
-    flexDirection: "row",
+  loadingMoreContainer: {
+    paddingVertical: 20,
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3.84,
-    elevation: 3,
   },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    marginRight: 15,
-  },
-  summaryContent: {
+  emptyContainer: {
     flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
   },
-  summaryJobTitle: {
-    fontWeight: "bold",
+  emptyListContent: {
+    flexGrow: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  emptyText: {
     fontSize: 18,
-    marginBottom: 4,
-  },
-  summaryWebsiteLink: {
-    color: "#007AFF",
-    textDecorationLine: "underline",
-    marginTop: 5,
+    fontWeight: "bold",
+    textAlign: "center",
+    color: "#333",
     marginBottom: 8,
+  },
+  emptySubText: {
     fontSize: 14,
-  },
-  summarySocialIcons: {
-    flexDirection: "row",
-    marginTop: 5,
-  },
-  socialIcon: {
-    marginRight: 15,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 50,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 50,
-  },
-  errorText: {
-    color: "red",
-    fontSize: 16,
-    marginBottom: 10,
     textAlign: "center",
-  },
-  retryButton: {
-    backgroundColor: "#007AFF",
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 5,
-  },
-  retryButtonText: {
-    color: "white",
-    fontSize: 16,
-  },
-  noConnectionsContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 30,
-    paddingHorizontal: 20,
-  },
-  noConnectionsText: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#555",
-    marginBottom: 10,
-    textAlign: "center",
-  },
-  noConnectionsSubText: {
-    fontSize: 14,
-    color: "#777",
-    textAlign: "center",
+    color: "#666",
   },
 });
 
-export default ConnectionsScreen;
+export default LikesYouScreen;

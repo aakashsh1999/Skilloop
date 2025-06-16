@@ -1,22 +1,83 @@
+import ActionButton from "@/components/ActionButton"; // Custom button
+import PageHeader from "@/components/PageHeader"; // Top header bar
+import { useProfileStore } from "../../store/useProfileStore";
 import { formatDate } from "@/utils/dateUtils";
 import { useNavigation } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import QuestionHeader from "@/components/PageHeader/QuestionHeader";
+import React, { useState } from "react";
 import {
   Alert,
-  Button,
+  Button, // Keeping standard Button for dialog, but will replace main ones with ActionButton
   FlatList,
   Image,
+  Platform,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-import { useProfileStore } from "../../store/useProfileStore";
+
+// Assuming your useProfileStore.ts file is in the same directory as this component's parent
+// and has an addCertificate function that generates unique IDs (e.g., using uuid)
+// For example, in useProfileStore.ts:
+/*
+import { create } from 'zustand';
+import { v4 as uuidv4 } from 'uuid'; // Requires 'react-native-get-random-values' import at app entry
+
+interface Certificate {
+  id: string; // Add ID for FlatList keyExtractor and removal
+  title: string;
+  organization: string;
+  issueDate?: string;
+  imageUrl?: string;
+  certificateUrl?: string;
+}
+
+interface ProfileState {
+  profile: {
+    certificates: Certificate[];
+    // ... other profile info
+  };
+  addCertificate: (cert: Omit<Certificate, 'id'>) => void;
+  removeCertificate: (id: string) => void;
+  setCurrentStep: (step: number) => void;
+  completeStep: (step: number) => void;
+}
+
+export const useProfileStore = create<ProfileState>((set) => ({
+  profile: {
+    certificates: [],
+    // ... initial profile values
+  },
+  addCertificate: (newCertData) =>
+    set((state) => ({
+      profile: {
+        ...state.profile,
+        certificates: [...state.profile.certificates, { id: uuidv4(), ...newCertData }],
+      },
+    })),
+  removeCertificate: (id) =>
+    set((state) => ({
+      profile: {
+        ...state.profile,
+        certificates: state.profile.certificates.filter((cert) => cert.id !== id),
+      },
+    })),
+  setCurrentStep: (step) => {
+    // ... update step logic
+  },
+  completeStep: (step) => {
+    // ... complete step logic
+  },
+}));
+*/
 
 const CertificatesScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation(); // Not directly used in JSX, but useful for generic navigation
   const {
     profile,
     addCertificate,
@@ -24,20 +85,22 @@ const CertificatesScreen = () => {
     setCurrentStep,
     completeStep,
   } = useProfileStore();
+  const router = useRouter(); // For expo-router navigation
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     organization: "",
     issueDate: "",
-    imageUrl: "",
+    imageUrl: "", // Base64 string for image display
     certificateUrl: "",
   });
-  // The imageFile state might not be needed if you only use imageUrl (base64)
-  // but it's not causing a syntax error.
-  // const [imageFile, setImageFile] = useState(null);
 
-  const handleChange = (name, value) => {
+  // State to determine if "Save" button in dialog is enabled
+  const isDialogFormValid =
+    formData.title.trim() !== "" && formData.organization.trim() !== "";
+
+  const handleChange = (name: string, value: string) => {
     setFormData({
       ...formData,
       [name]: value,
@@ -50,56 +113,43 @@ const CertificatesScreen = () => {
     if (!permissionResult.granted) {
       Alert.alert(
         "Permission Denied",
-        "Permission to access camera roll is required!"
+        "Permission to access camera roll is required to upload images."
       );
       return;
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
       base64: true,
-      allowsEditing: true,
-      quality: 0.7,
-      mediaTypes: ImagePicker.MediaTypeOptions.Images, // Specify media type
+      allowsEditing: true, // Allows user to crop/edit
+      quality: 0.7, // Compress image quality
+      mediaTypes: ImagePicker.MediaTypeOptions.Images, // Only allow images
     });
 
-    // ** --- FIX APPLIED HERE FOR EXPO IMAGEPICKER API --- **
-    // Use result.canceled instead of result.cancelled
-    // Access asset data from result.assets array
     if (!result.canceled) {
-      // Check if assets array and the first asset exist
       const selectedAsset =
         result.assets && result.assets.length > 0 ? result.assets[0] : null;
 
-      if (selectedAsset) {
+      if (selectedAsset && selectedAsset.base64) {
         setFormData({
           ...formData,
-          imageUrl: `data:image/jpeg;base64,${selectedAsset.base64}`,
+          imageUrl: `data:image/jpeg;base64,${selectedAsset.base64}`, // Correct base64 URI
         });
-        // If you were using imageFile to display the original filename/uri
-        // setImageFile(selectedAsset.uri);
       } else {
-        // Handle case where no asset was selected despite not being cancelled
-        console.log("Image selection failed or returned no assets.");
+        Alert.alert("Image Error", "Failed to get image data.");
       }
-    } else {
-      // Handle the case where the user cancelled the picker
-      console.log("Image picking cancelled");
     }
-    // ** ------------------------------------------------- **
   };
 
   const handleAddCertificate = () => {
-    if (!formData.title || !formData.organization) {
+    if (!isDialogFormValid) {
       Alert.alert(
         "Required Fields",
-        "Please provide a certificate title and issuing organization at minimum."
+        "Please provide a certificate title and issuing organization."
       );
       return;
     }
-    // Assuming addCertificate function in the store handles generating a unique ID
-    addCertificate({
-      ...formData,
-    });
+
+    addCertificate(formData); // `id` should be generated in the store's addCertificate
     setFormData({
       title: "",
       organization: "",
@@ -107,12 +157,10 @@ const CertificatesScreen = () => {
       imageUrl: "",
       certificateUrl: "",
     });
-    // setImageFile(null); // Reset imageFile state if used
     setIsDialogOpen(false);
   };
 
-  const handleRemoveCertificate = (id) => {
-    // Added confirmation for removing for better UX
+  const handleRemoveCertificate = (id: string) => {
     Alert.alert(
       "Remove Certificate",
       "Are you sure you want to remove this certificate?",
@@ -121,21 +169,24 @@ const CertificatesScreen = () => {
           text: "Cancel",
           style: "cancel",
         },
-        { text: "OK", onPress: () => removeCertificate(id) },
+        {
+          text: "Remove",
+          onPress: () => removeCertificate(id),
+          style: "destructive",
+        },
       ]
     );
   };
 
-  const router = useRouter();
   const handleContinue = () => {
-    // This order is syntactically correct, but ensure store updates are fast
-    completeStep(4);
-    setCurrentStep(5);
-    router.push("/(registration)/work-experience");
+    completeStep(4); // Mark step 4 as complete
+    setCurrentStep(5); // Move to step 5
+    router.push("/(registration)/work-experience"); // Navigate to the next registration step
   };
 
   const handleBack = () => {
-    navigation.goBack();
+    // This custom onBack handler could navigate to the previous registration step
+    router.push("/(registration)/basic-information"); // Example: go back to basic info
   };
 
   const handleSkip = () => {
@@ -145,214 +196,145 @@ const CertificatesScreen = () => {
   };
 
   // Helper function to render each certificate item for FlatList
-  const renderCertificateItem = ({ item }) => (
-    <View
-      style={{
-        marginBottom: 12,
-        padding: 10,
-        backgroundColor: "#eee",
-        borderRadius: 8,
-        flexDirection: "row", // Arrange items horizontally
-        alignItems: "center", // Align items vertically in the center
-        justifyContent: "space-between", // Distribute space
-      }}
-    >
-      <View
-        style={{ flexDirection: "row", alignItems: "center", flexShrink: 1 }}
-      >
-        {/* Ensure imageUrl is a valid URI or base64 string */}
+  const renderCertificateItem = ({ item }: { item: any }) => (
+    <View style={styles.certificateItem}>
+      <View style={styles.certificateDetails}>
         {item.imageUrl ? (
           <Image
             source={{ uri: item.imageUrl }}
-            style={{ width: 50, height: 50, borderRadius: 25, marginRight: 10 }} // Styled image
+            style={styles.certificateImage}
           />
         ) : null}
-        <View style={{ flexShrink: 1 }}>
-          <Text style={{ fontWeight: "bold", flexShrink: 1 }}>
+        <View style={styles.certificateTextContainer}>
+          <Text style={styles.certificateTitle} numberOfLines={1}>
             {item.title}
           </Text>
-          <Text style={{ flexShrink: 1 }}>
-            {item.organization}{" "}
-            {item.issueDate ? `• ${formatDate(item.issueDate)}` : ""}{" "}
-            {/* Conditionally render date */}
+          <Text style={styles.certificateOrgDate} numberOfLines={1}>
+            {item.organization}
+            {item.issueDate ? ` • ${formatDate(item.issueDate)}` : ""}
           </Text>
         </View>
       </View>
-      <Button
-        title="Remove"
+      <TouchableOpacity
         onPress={() => handleRemoveCertificate(item.id)}
-        color="red" // Use red for remove button
-      />
+        style={styles.removeButton}
+      >
+        <Text style={styles.removeButtonText}>Remove</Text>
+      </TouchableOpacity>
     </View>
   );
 
   return (
-    <View style={{ padding: 16, flex: 1 }}>
-      {" "}
-      {/* Added flex: 1 */}
-      <Text style={{ fontSize: 24, fontWeight: "bold", marginBottom: 8 }}>
-        Certificates
-      </Text>
-      <Text style={{ marginBottom: 16, color: "#555" }}>
-        Add your certificates and certifications to showcase your skills and
-        qualifications.
-      </Text>
-      <FlatList
-        data={profile.certificates}
-        keyExtractor={(item) => item.id} // Ensure unique 'id' from the store
-        renderItem={renderCertificateItem}
-        contentContainerStyle={{ paddingBottom: 20 }} // Add padding below the list
-      />
-      <TouchableOpacity
-        onPress={() => setIsDialogOpen(true)}
-        style={{
-          marginVertical: 12,
-          backgroundColor: "#ddd",
-          padding: 12,
-          borderRadius: 6,
-          alignItems: "center",
-        }}
+    <View style={appStyles.fullScreenContainer}>
+      <PageHeader currentStep={5} totalSteps={6} onBack={handleBack} />
+
+      <ScrollView
+        contentContainerStyle={styles.contentContainer}
+        keyboardShouldPersistTaps="handled"
       >
-        <Text>+ Add Certificate</Text>
-      </TouchableOpacity>
-      {/* Navigation Buttons */}
-      <View
-        style={{
-          marginTop: 20,
-          borderTopWidth: 1,
-          borderTopColor: "#eee",
-          paddingTop: 10,
-        }}
-      >
-        {profile.certificates && profile.certificates.length > 0 ? (
-          <Button title="Continue" onPress={handleContinue} />
-        ) : (
-          <Button title="Skip for now" onPress={handleSkip} color="grey" />
-        )}
-        <View style={{ marginTop: 10 }}>
-          <Button title="Back" onPress={handleBack} color="#555" />
-        </View>
-      </View>
-      {isDialogOpen && (
-        // Modal/Dialog overlay
-        <View
-          style={{
-            position: "absolute", // Position over content
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0,0,0,0.5)", // Dim background
-            justifyContent: "center",
-            alignItems: "center",
-            padding: 20,
-            zIndex: 1000, // Ensure dialog is on top
-          }}
+        <QuestionHeader
+          title="Certificates"
+          subtitle="Add your certificates and certifications to showcase your skills"
+        />
+
+        <TouchableOpacity
+          onPress={() => setIsDialogOpen(true)}
+          style={styles.addCertificateButton}
         >
-          <View
-            style={{
-              backgroundColor: "white",
-              padding: 20,
-              borderRadius: 8,
-              width: "95%", // Responsive width
-              maxHeight: "80%", // Limit height
-            }}
+          <Text style={styles.addCertificateButtonText}>+ Add Certificate</Text>
+        </TouchableOpacity>
+
+        {profile.certificates && profile.certificates.length > 0 && (
+          <FlatList
+            data={profile.certificates}
+            keyExtractor={(item) => item.id.toString()} // Ensure 'id' is a string or number
+            renderItem={renderCertificateItem}
+            contentContainerStyle={styles.certificatesList}
+            scrollEnabled={false} // FlatList inside ScrollView generally shouldn't scroll
+          />
+        )}
+
+        {/* Conditional rendering for "Continue" or "Skip" */}
+        {profile.certificates && profile.certificates.length > 0 ? (
+          <ActionButton onPress={handleContinue} fullWidth>
+            Continue
+          </ActionButton>
+        ) : (
+          <ActionButton
+            onPress={handleSkip}
+            fullWidth
+            style={styles.skipButton}
+            textStyle={styles.skipButtonText}
           >
-            <Text
-              style={{ fontSize: 20, fontWeight: "bold", marginBottom: 15 }}
-            >
-              Add certificate
-            </Text>
+            Skip for now
+          </ActionButton>
+        )}
+      </ScrollView>
+
+      {/* Modal/Dialog for Add Certificate */}
+      {isDialogOpen && (
+        <View style={styles.dialogOverlay}>
+          <View style={styles.dialogContainer}>
+            <Text style={styles.dialogTitle}>Add certificate</Text>
 
             <TextInput
               placeholder="Certificate Title *"
               value={formData.title}
               onChangeText={(text) => handleChange("title", text)}
-              style={{
-                borderBottomWidth: 1,
-                borderColor: "#ccc",
-                paddingVertical: 8,
-                marginBottom: 12,
-              }}
+              style={styles.dialogInput}
             />
 
             <TextInput
               placeholder="Issuing Organization *"
               value={formData.organization}
               onChangeText={(text) => handleChange("organization", text)}
-              style={{
-                borderBottomWidth: 1,
-                borderColor: "#ccc",
-                paddingVertical: 8,
-                marginBottom: 12,
-              }}
+              style={styles.dialogInput}
             />
 
             <TextInput
               placeholder="Issue Date (e.g., 01/2023)"
               value={formData.issueDate}
               onChangeText={(text) => handleChange("issueDate", text)}
-              style={{
-                borderBottomWidth: 1,
-                borderColor: "#ccc",
-                paddingVertical: 8,
-                marginBottom: 12,
-              }}
+              style={styles.dialogInput}
               keyboardType="numbers-and-punctuation"
             />
 
             <TouchableOpacity
               onPress={handleImageChange}
-              style={{ marginVertical: 8, paddingVertical: 8 }}
+              style={styles.uploadImageButton}
             >
-              <Text style={{ color: "blue" }}>Upload Certificate Image</Text>
+              <Text style={styles.uploadImageButtonText}>
+                Upload Certificate Image
+              </Text>
             </TouchableOpacity>
-            {/* Display uploaded image preview */}
+
             {formData.imageUrl ? (
               <Image
                 source={{ uri: formData.imageUrl }}
-                style={{
-                  width: 80,
-                  height: 80,
-                  marginVertical: 8,
-                  alignSelf: "center",
-                }}
+                style={styles.uploadedImagePreview}
               />
             ) : null}
-            {/* Removed imageFile filename display as imageUrl (base64) is used */}
-            {/* {imageFile && <Text>{imageFile.split("/").pop()}</Text>} */}
 
             <TextInput
               placeholder="Certificate URL (Optional)"
               value={formData.certificateUrl}
               onChangeText={(text) => handleChange("certificateUrl", text)}
-              style={{
-                borderBottomWidth: 1,
-                borderColor: "#ccc",
-                paddingVertical: 8,
-                marginBottom: 20,
-              }}
+              style={styles.dialogInput}
               keyboardType="url"
             />
 
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "flex-end",
-                marginTop: 12,
-              }}
-            >
+            <View style={styles.dialogButtons}>
               <Button
                 title="Cancel"
-                onPress={() => {
-                  setIsDialogOpen(false);
-                  // Optionally reset form data on cancel
-                  // setFormData({ title: "", organization: "", issueDate: "", imageUrl: "", certificateUrl: "" });
-                }}
+                onPress={() => setIsDialogOpen(false)}
                 color="grey"
               />
               <View style={{ width: 8 }} />
-              <Button title="Save" onPress={handleAddCertificate} />
+              <Button
+                title="Save"
+                onPress={handleAddCertificate}
+                disabled={!isDialogFormValid}
+              />
             </View>
           </View>
         </View>
@@ -362,3 +344,199 @@ const CertificatesScreen = () => {
 };
 
 export default CertificatesScreen;
+
+const appStyles = StyleSheet.create({
+  fullScreenContainer: {
+    flex: 1,
+    backgroundColor: "white",
+  },
+});
+
+const styles = StyleSheet.create({
+  contentContainer: {
+    paddingHorizontal: 20,
+    backgroundColor: "white",
+    paddingBottom: 40, // Ensure space for action button at bottom
+  },
+  // Reusing styles from BasicInformation for consistency with QuestionHeader
+  pageTitle: {
+    fontSize: 28,
+    fontWeight: "bold",
+    marginBottom: 8,
+    marginTop: 24, // Space below header
+  },
+  pageSubtitle: {
+    fontSize: 16,
+    color: "#6b7280", // gray-500
+    marginBottom: 24, // Space before first input
+  },
+  addCertificateButton: {
+    marginVertical: 12,
+    // Removed width: "80%" and marginHorizontal: "auto" as they don't work for alignSelf
+    alignSelf: "center", // Center the button horizontally
+    width: "90%", // Adjust width as needed
+    borderColor: "#ccc",
+    borderWidth: 2,
+    borderStyle: "dashed",
+    borderRadius: 24,
+    padding: 30,
+    alignItems: "center",
+  },
+  addCertificateButtonText: {
+    color: "#4B5563", // Gray color
+    fontSize: 16,
+    fontFamily: "Montserrat",
+    fontWeight: "500",
+  },
+  certificatesList: {
+    paddingBottom: 20, // Add padding below the list itself
+  },
+  certificateItem: {
+    marginBottom: 12,
+    padding: 10,
+    backgroundColor: "#F8F8F8", // Light gray background
+    borderRadius: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: "#E0E0E0", // Subtle border
+  },
+  certificateDetails: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexShrink: 1, // Allow text to shrink
+    marginRight: 10, // Space before remove button
+  },
+  certificateImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 10,
+    backgroundColor: "#DCDCDC", // Placeholder background for image
+  },
+  certificateTextContainer: {
+    flexShrink: 1,
+  },
+  certificateTitle: {
+    fontWeight: "bold",
+    fontSize: 16,
+    color: "#333",
+  },
+  certificateOrgDate: {
+    fontSize: 13,
+    color: "#666",
+  },
+  removeButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 5,
+    backgroundColor: "#FF6347", // Tomato red for clear "remove"
+  },
+  removeButtonText: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 12,
+  },
+  skipButton: {
+    // Custom style for the skip button, making it distinct from "Continue"
+    backgroundColor: "#A9A9A9", // Darker gray
+    borderColor: "#696969", // Even darker gray border
+    marginTop: 40,
+  },
+  skipButtonText: {
+    // If you want different text style for skip
+    color: "white",
+  },
+
+  // Dialog (Modal) Styles
+  dialogOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.6)", // Darker overlay
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+    zIndex: 1000,
+  },
+  dialogContainer: {
+    backgroundColor: "white",
+    padding: 20,
+    borderRadius: 12, // More rounded corners
+    width: "95%",
+    maxHeight: "85%", // Increased max height
+    // Optional: Add shadow to dialog
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 10,
+      },
+    }),
+  },
+  dialogTitle: {
+    fontSize: 22, // Slightly larger title
+    fontWeight: "bold",
+    marginBottom: 20, // More space
+    textAlign: "center", // Center dialog title
+  },
+  dialogInput: {
+    borderWidth: 1,
+    borderColor: "#D1D5DB", // Lighter border
+    borderRadius: 8, // Slightly rounded input
+    paddingHorizontal: 12,
+    paddingVertical: Platform.OS === "ios" ? 12 : 10,
+    marginBottom: 15,
+    fontSize: 16,
+  },
+  uploadImageButton: {
+    marginVertical: 10,
+    paddingVertical: 10,
+    alignItems: "center",
+    backgroundColor: "#EBF5FF", // Light blue background
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#D1D5DB", // Matches input border
+  },
+  uploadImageButtonText: {
+    color: "#007AFF", // Standard blue
+    fontWeight: "600",
+  },
+  uploadedImagePreview: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+    marginVertical: 15,
+    alignSelf: "center",
+    resizeMode: "cover", // Cover the area
+  },
+  dialogButtons: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginTop: 20,
+  },
+  // Old styles that are not used or superseded:
+  inputGroup: {},
+  label: {
+    fontSize: 14,
+    color: "#4B5563",
+    marginBottom: 6,
+    // fontFamily: "Montserrat", // Removed here as QuestionHeader uses it, not this specific input
+  },
+  input: {
+    // Defined specific input styles above
+  },
+  help: {},
+  socialContainer: {},
+  socialLabel: {},
+  iconRow: {},
+  iconCircle: {},
+  iconCircleActive: {},
+});

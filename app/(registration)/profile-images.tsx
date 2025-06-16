@@ -23,6 +23,7 @@ import {
 } from "react-native";
 // import { launchImageLibrary } from "react-native-image-picker"; // REMOVE THIS IMPORT
 import * as ImagePicker from "expo-image-picker"; // ADD THIS IMPORT
+import QuestionHeader from "@/components/PageHeader/QuestionHeader";
 
 const IMAGE_TYPES = [
   { id: "face", label: "Your face", description: "A clear headshot" },
@@ -157,12 +158,10 @@ const ProfileImages: React.FC = () => {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <PageHeader
+      <PageHeader currentStep={6} totalSteps={6} onBack={handleBack} />
+      <QuestionHeader
         title="Profile Images"
         subtitle="Upload three professional photos that represent you best"
-        currentStep={6}
-        totalSteps={6}
-        onBack={handleBack}
       />
 
       <View style={styles.grid}>
@@ -209,8 +208,10 @@ const ProfileImages: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 16,
+    flex: 1,
+    paddingHorizontal: 24,
     paddingVertical: 24,
+    backgroundColor: "#fff",
   },
   grid: {
     flexDirection: "row",
@@ -221,12 +222,13 @@ const styles = StyleSheet.create({
   imageBox: {
     width: 100,
     height: 100,
-    borderRadius: 12,
+    borderRadius: 24,
     borderWidth: 2,
     borderStyle: "dashed",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
+    padding: 10,
   },
   imageBoxEmpty: {
     borderColor: "#ccc",
@@ -243,18 +245,27 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 12,
     color: "#888",
-    textAlign: "center",
     paddingHorizontal: 4,
+    marginVertical: "auto",
+    fontFamily: "Montserrat",
   },
   uploadButton: {
     backgroundColor: "#eee",
     paddingVertical: 12,
-    borderRadius: 24,
+    borderRadius: 16,
+    height: 56,
+    display: "flex",
+    flexDirection: "row",
+    textAlignVertical: "center",
+    justifyContent: "center",
     alignItems: "center",
     marginBottom: 24,
+    marginHorizontal: "auto",
+    width: 250,
   },
   uploadButtonText: {
     color: "#444",
+    textAlignVertical: "center",
     fontWeight: "600",
   },
 });

@@ -15,8 +15,7 @@ export const formatDate = (dateString: string): string => {
 export const formatDateForDisplay = (dateString: string): string => {
   if (!dateString) return "";
 
-  const [year, month] = dateString.split("-");
-  return `${month}/${year}`;
+  return dateString;
 };
 
 export const formatDateForInput = (dateString: string): string => {

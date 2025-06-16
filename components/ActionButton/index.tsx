@@ -1,98 +1,100 @@
 import React from "react";
 import {
-  GestureResponderEvent,
-  StyleSheet,
-  Text,
-  TextStyle,
   TouchableOpacity,
-  ViewStyle,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  Platform, // For platform-specific shadow properties
+  ViewStyle, // For type-checking styles
+  TextStyle, // For type-checking styles
 } from "react-native";
 
 interface ActionButtonProps {
-  children: React.ReactNode;
-  onPress?: (event: GestureResponderEvent) => void;
-  variant?: "primary" | "secondary" | "outline";
+  onPress: () => void;
+  children: React.ReactNode; // Can be string, or other elements
   disabled?: boolean;
-  fullWidth?: boolean;
-  style?: ViewStyle;
-  textStyle?: TextStyle;
+  isLoading?: boolean;
+  fullWidth?: boolean; // Prop to control button width
+  style?: ViewStyle; // Allows external style overrides for the button container
+  textStyle?: TextStyle; // Allows external style overrides for the button text
 }
 
 const ActionButton: React.FC<ActionButtonProps> = ({
-  children,
   onPress,
-  variant = "primary",
+  children,
   disabled = false,
-  fullWidth = false,
+  isLoading = false,
+  fullWidth = false, // Default to not full width
   style,
   textStyle,
 }) => {
-  const getButtonStyle = (): ViewStyle[] => {
-    const baseStyle = [styles.baseButton];
-    const variantStyle = styles[`${variant}Button`];
-    if (fullWidth) baseStyle.push(styles.fullWidth);
-    if (disabled) baseStyle.push(styles.disabledButton);
-    return [...baseStyle, variantStyle, style || {}];
-  };
-
-  const getTextStyle = (): TextStyle[] => {
-    const baseTextStyle = [styles.text];
-    const variantText = styles[`${variant}Text`];
-    return [...baseTextStyle, variantText, textStyle || {}];
-  };
-
   return (
     <TouchableOpacity
       onPress={onPress}
-      style={getButtonStyle()}
-      disabled={disabled}
-      activeOpacity={0.8}
+      activeOpacity={0.7} // Visual feedback on press
+      disabled={disabled || isLoading} // Disable if explicitly disabled or currently loading
+      style={[
+        styles.buttonContainer,
+        fullWidth && styles.fullWidthButton, // Apply full width style if prop is true
+        disabled && styles.buttonDisabled, // Apply disabled styles
+        style, // Apply any custom styles passed in props (last to override)
+      ]}
     >
-      <Text style={getTextStyle()}>{children}</Text>
+      {isLoading ? (
+        <ActivityIndicator color="#FFFFFF" /> // White spinner when loading
+      ) : (
+        <Text style={[styles.buttonText, textStyle]}>{children}</Text>
+      )}
     </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
-  baseButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 999,
-    alignItems: "center",
-    justifyContent: "center",
+  buttonContainer: {
+    backgroundColor: "#D29F6B", // Light orange/brown color from image
+    borderRadius: 20, // Very large border radius to create a pill shape
+    borderWidth: 1,
+    width: 250,
+    marginHorizontal: "auto",
+    borderColor: "black", // Black border from image
+    height: 56, // Fixed height for a standard large button
+    paddingHorizontal: 24, // Padding on sides (adjust as needed for text fit)
+    alignItems: "center", // Center text horizontally
+    justifyContent: "center", // Center text vertically
+    // Shadow properties for iOS and Android
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 }, // Adjust for desired shadow direction/intensity
+        shadowOpacity: 0.2, // Subtle shadow
+        shadowRadius: 5,
+      },
+      android: {
+        elevation: 8, // Android shadow
+      },
+    }),
   },
-  fullWidth: {
-    width: "100%",
+  fullWidthButton: {},
+  buttonText: {
+    color: "#FFFFFF", // White text color
+    fontSize: 18,
+    fontFamily: "Montserrat-SemiBold", // Or "Montserrat-Regular" depending on desired weight
+    fontWeight: "600", // Semibold for the "Continue" text look
+    // If Montserrat font is loaded, use it:
+    // fontFamily: "Montserrat-SemiBold", // Or "Montserrat-Regular" depending on desired weight
   },
-  disabledButton: {
-    opacity: 0.5,
-  },
-  // Variants
-  primaryButton: {
-    backgroundColor: "#fb923c", // orange
-  },
-  secondaryButton: {
-    backgroundColor: "#d1d5db", // gray-300
-  },
-  outlineButton: {
-    borderWidth: 2,
-    borderColor: "#d1d5db",
-    backgroundColor: "transparent",
-  },
-
-  // Text colors
-  text: {
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  primaryText: {
-    color: "#fff",
-  },
-  secondaryText: {
-    color: "#1f2937", // gray-800
-  },
-  outlineText: {
-    color: "#4b5563", // gray-600
+  buttonDisabled: {
+    backgroundColor: "#D3D3D3", // Lighter gray for disabled state
+    borderColor: "#A9A9A9", // Darker gray border for disabled
+    // No shadow for disabled buttons for cleaner look, or reduce opacity
+    ...Platform.select({
+      ios: {
+        shadowOpacity: 0.05,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
 });
 

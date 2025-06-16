@@ -11,10 +11,12 @@ import { Slot, Stack, useRouter } from "expo-router"; // Import useRouter
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { View, Text } from "react-native";
+import "react-native-get-random-values";
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
-    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
+    Montserrat: require("../assets/fonts/Montserrat-Regular.ttf"),
+    MontserratBold: require("../assets/fonts/Montserrat-Bold.ttf"),
   });
 
   if (!fontsLoaded) {
@@ -49,7 +51,7 @@ function AuthStack() {
       // User is not logged in
       router.replace("/(auth)/welcome"); // Navigate to the unauthenticated auth group (e.g., welcome screen)
     }
-  }, [session, isLoading]); // Dependency array: re-run when session or loading state changes
+  }, [session, isLoading, router]); // Dependency array: re-run when session or loading state changes
 
   if (isLoading) {
     return (
@@ -61,7 +63,7 @@ function AuthStack() {
 
   // Render Stack for all possible top-level routes
   return (
-    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={DefaultTheme}>
       <Stack screenOptions={{ headerShown: false }}>
         {/* Unauthenticated routes - accessible when session is null */}
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
@@ -69,7 +71,11 @@ function AuthStack() {
 
         {/* Authenticated routes - accessible when session is not null */}
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="chat-screen" options={{ headerShown: false }} />
+        <Stack.Screen name="chat/[id]" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="(settings)/index"
+          options={{ headerShown: false }}
+        />
         {/* Potentially other authenticated screens like user profile, settings outside tabs */}
         {/* <Stack.Screen name="settings" options={{ headerShown: false }} /> */}
 

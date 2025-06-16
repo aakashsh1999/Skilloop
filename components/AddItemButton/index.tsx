@@ -25,13 +25,16 @@ const AddItemButton: React.FC<AddItemButtonProps> = ({
 
 const styles = StyleSheet.create({
   button: {
+    marginVertical: 12,
+    // Removed width: "80%" and marginHorizontal: "auto" as they don't work for alignSelf
+    alignSelf: "center", // Center the button horizontally
+    width: "90%", // Adjust width as needed
+    borderColor: "#ccc",
     borderWidth: 2,
     borderStyle: "dashed",
-    borderColor: "#E5E7EB",
-    borderRadius: 8,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    backgroundColor: "#FFFFFF",
+    borderRadius: 24,
+    padding: 30,
+    alignItems: "center",
   },
   content: {
     flexDirection: "row",
@@ -42,8 +45,10 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   label: {
-    color: "#4B5563",
+    color: "#4B5563", // Gray color
     fontSize: 16,
+    fontFamily: "Montserrat",
+    fontWeight: "500",
   },
 });
 
