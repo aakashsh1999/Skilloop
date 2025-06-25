@@ -175,7 +175,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
     marginBottom: 8,
-    fontFamily: "Montserrat",
   },
   input: {
     borderWidth: 1,
@@ -200,7 +199,6 @@ const styles = StyleSheet.create({
   tagText: {
     fontSize: 14,
     fontWeight: "500",
-    fontFamily: "Montserrat",
   },
   skillTag: {
     flexDirection: "row",

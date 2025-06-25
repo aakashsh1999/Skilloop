@@ -230,7 +230,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#4B5563",
     marginBottom: 6,
-    fontFamily: "Montserrat",
   },
   input: {
     borderWidth: 1,
@@ -239,14 +238,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: Platform.OS === "ios" ? 14 : 10,
     fontSize: 16,
-    fontFamily: "MontserratBold",
   },
   help: {
     fontSize: 12,
     color: "#9CA3AF",
     marginTop: 4,
     textAlign: "center",
-    fontFamily: "Montserrat",
   },
   socialContainer: {
     marginBottom: 24,
@@ -256,7 +253,6 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: "#4B5563",
     marginBottom: 8,
-    fontFamily: "Montserrat",
   },
   iconRow: {
     flexDirection: "row",

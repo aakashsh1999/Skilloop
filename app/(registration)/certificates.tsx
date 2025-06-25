@@ -385,7 +385,7 @@ const styles = StyleSheet.create({
   addCertificateButtonText: {
     color: "#4B5563", // Gray color
     fontSize: 16,
-    fontFamily: "Montserrat",
+    // fontFamily: "Montserrat",
     fontWeight: "500",
   },
   certificatesList: {

@@ -33,14 +33,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     // Use the loaded font family for bold text
-    fontFamily: "MontserratBold",
     color: "#000", // Black color as in the image
     marginBottom: 8, // Space between title and subtitle
   },
   subtitle: {
     fontSize: 16,
     // Use the loaded font family for regular text
-    fontFamily: "Montserrat",
     color: "#6b7280", // A typical gray for descriptive text
   },
 });

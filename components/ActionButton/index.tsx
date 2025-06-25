@@ -78,7 +78,6 @@ const styles = StyleSheet.create({
   buttonText: {
     color: "#FFFFFF", // White text color
     fontSize: 18,
-    fontFamily: "Montserrat-SemiBold", // Or "Montserrat-Regular" depending on desired weight
     fontWeight: "600", // Semibold for the "Continue" text look
     // If Montserrat font is loaded, use it:
     // fontFamily: "Montserrat-SemiBold", // Or "Montserrat-Regular" depending on desired weight

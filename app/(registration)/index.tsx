@@ -126,13 +126,11 @@ const styles = StyleSheet.create({
   },
   optionTitle: {
     fontSize: 20,
-    fontFamily: "MontserratBold",
     fontWeight: "500",
     marginBottom: 4,
   },
   optionDescription: {
     color: "#6b7280", // gray-500
-    fontFamily: "Montserrat",
   },
   optionEmoji: {
     fontSize: 28,

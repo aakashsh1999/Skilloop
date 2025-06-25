@@ -247,7 +247,6 @@ const styles = StyleSheet.create({
     color: "#888",
     paddingHorizontal: 4,
     marginVertical: "auto",
-    fontFamily: "Montserrat",
   },
   uploadButton: {
     backgroundColor: "#eee",

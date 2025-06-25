@@ -41,8 +41,9 @@ const SettingsScreen = () => {
   const SettingsSection = ({ title, icon, children, badge = null }) => (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>{title}</Text>
-        <Text style={styles.sectionIcon}>{icon}</Text>
+        <Text style={styles.sectionTitle}>
+          {icon} {title}
+        </Text>
         {badge && (
           <View style={styles.sectionBadge}>
             <Text style={styles.sectionBadgeText}>{badge}</Text>
@@ -83,6 +84,7 @@ const SettingsScreen = () => {
             title="Visibility"
             onPress={() => handlePress("Visibility")}
           />
+          <SettingsItem title="Logout" onPress={() => signOut()} />
         </SettingsSection>
 
         {/* Account Section */}
@@ -103,7 +105,6 @@ const SettingsScreen = () => {
             title="Delete Account"
             onPress={() => handlePress("Delete Account")}
           />
-          <SettingsItem title="Logout" onPress={() => signOut()} />r
         </SettingsSection>
 
         {/* App Preferences Section */}

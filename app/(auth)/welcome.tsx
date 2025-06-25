@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Image,
+  Alert,
 } from "react-native";
 // import { CircleDot } from "lucide-react-native";
 import { StatusBar } from "expo-status-bar";
@@ -13,6 +14,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Path, Svg } from "react-native-svg";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import * as AuthSession from "expo-auth-session";
+import { supabase } from "@/lib/supabase";
 
 const Logo = () => (
   <View style={styles.logoContainer}>
@@ -24,8 +27,14 @@ const Logo = () => (
   </View>
 );
 
-const SocialButton = ({ provider }: { provider: "google" | "apple" }) => (
-  <TouchableOpacity style={styles.socialButton}>
+const SocialButton = ({
+  provider,
+  signInWithGoogle,
+}: {
+  provider: "google" | "apple";
+  signInWithGoogle: () => void;
+}) => (
+  <TouchableOpacity style={styles.socialButton} onPress={signInWithGoogle}>
     <Svg viewBox="0 0 24 24" width="24" height="24">
       <Path
         fill="#4285F4"
@@ -49,6 +58,63 @@ const SocialButton = ({ provider }: { provider: "google" | "apple" }) => (
 
 export default function App() {
   const router = useRouter();
+
+  const signInWithGoogle = async () => {
+    console.log("running");
+    const redirectUri = AuthSession.makeRedirectUri({
+      native: "exp://172.16.2.3:8081/register", // update for your scheme
+    });
+
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: redirectUri,
+      },
+    });
+
+    if (error) {
+      Alert.alert("Login Error", error.message);
+      return;
+    }
+
+    const authResult = await AuthSession.startAsync({ authUrl: data.url });
+
+    if (authResult.type !== "success") {
+      Alert.alert("Login cancelled");
+      return;
+    }
+
+    // Wait for session
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    const user = session?.user;
+
+    if (!user) {
+      Alert.alert("Failed to retrieve user session");
+      return;
+    }
+
+    // Check if profile exists
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single();
+
+    if (profileError && profileError.code !== "PGRST116") {
+      Alert.alert("Error checking user profile", profileError.message);
+      return;
+    }
+
+    if (profile) {
+      router.push("/(tabs)");
+    } else {
+      router.push("/(registration)");
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
@@ -175,11 +241,12 @@ export default function App() {
             style={styles.getStartedButton}
             onPress={() => router.push("/login")}
           >
-            <Text style={styles.getStartedText}>Get Started</Text><Text> </Text>
+            <Text style={styles.getStartedText}>Get Started</Text>
+            <Text> </Text>
             <Ionicons name="arrow-redo-outline" size={24} color="white" />
           </TouchableOpacity>
 
-          <SocialButton provider="google" />
+          <SocialButton provider="google" signInWithGoogle={signInWithGoogle} />
         </View>
 
         <View style={styles.actionContainer}>
@@ -198,7 +265,7 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "white",
   },
   content: {
     flex: 1,

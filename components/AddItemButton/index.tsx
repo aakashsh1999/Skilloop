@@ -47,7 +47,6 @@ const styles = StyleSheet.create({
   label: {
     color: "#4B5563", // Gray color
     fontSize: 16,
-    fontFamily: "Montserrat",
     fontWeight: "500",
   },
 });

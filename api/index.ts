@@ -236,7 +236,6 @@ export interface ChatMessage {
 
 export const ChatAPI = {
   getActiveChats: async (userId: string): Promise<ActiveChatSummary[]> => {
-    console.log(userId, "sss");
     try {
       const response = await fetch(
         `${API_BASE_URL}/api/chats/active/${userId}`
