@@ -113,56 +113,56 @@ export default function HubScreen() {
     );
   }
 
-  if (error) {
-    return (
-      <View style={styles.centeredContainer}>
-        <Text style={styles.errorText}>{error}</Text>
-        {/* Add a button to retry or go to login/registration */}
-        {!session && ( // If no session, prompt login
-          <TouchableOpacity
-            onPress={() => router.replace("/login")}
-            style={styles.actionButton}
-          >
-            <Text style={styles.actionButtonText}>Go to Login</Text>
-          </TouchableOpacity>
-        )}
-        {session &&
-          !profile && ( // If session but no profile, prompt registration or retry
-            <>
-              <Text style={styles.errorSubText}>
-                Please ensure your profile is complete.
-              </Text>
-              {/* Optional: Button to retry fetch or go to registration */}
-              {/* <TouchableOpacity onPress={() => fetchProfile()} style={styles.actionButton}>
-                          <Text style={styles.actionButtonText}>Retry</Text>
-                      </TouchableOpacity> */}
-              {/* Or direct to registration if that's the flow */}
-            </>
-          )}
-        {/* For other fetch errors, just show the error message */}
-      </View>
-    );
-  }
+  // if (error) {
+  //   return (
+  //     <View style={styles.centeredContainer}>
+  //       <Text style={styles.errorText}>{error}</Text>
+  //       {/* Add a button to retry or go to login/registration */}
+  //       {!session && ( // If no session, prompt login
+  //         <TouchableOpacity
+  //           onPress={() => router.replace("/login")}
+  //           style={styles.actionButton}
+  //         >
+  //           <Text style={styles.actionButtonText}>Go to Login</Text>
+  //         </TouchableOpacity>
+  //       )}
+  //       {session &&
+  //         !profile && ( // If session but no profile, prompt registration or retry
+  //           <>
+  //             <Text style={styles.errorSubText}>
+  //               Please ensure your profile is complete.
+  //             </Text>
+  //             {/* Optional: Button to retry fetch or go to registration */}
+  //             {/* <TouchableOpacity onPress={() => fetchProfile()} style={styles.actionButton}>
+  //                         <Text style={styles.actionButtonText}>Retry</Text>
+  //                     </TouchableOpacity> */}
+  //             {/* Or direct to registration if that's the flow */}
+  //           </>
+  //         )}
+  //       {/* For other fetch errors, just show the error message */}
+  //     </View>
+  //   );
+  // }
 
   // If we reach here, profile is loaded (or null if error was just a warning)
   // Check if profile is actually null before rendering main content
-  if (!profile) {
-    // This case is handled by the error state, but good to have a fallback UI
-    return (
-      <View style={styles.centeredContainer}>
-        <Text style={styles.errorText}>Profile data not available.</Text>
-        <Text style={styles.errorSubText}>
-          Please log in or complete your profile.
-        </Text>
-        <TouchableOpacity
-          onPress={() => router.replace("/login")}
-          style={styles.actionButton}
-        >
-          <Text style={styles.actionButtonText}>Go to Login</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
+  // if (!profile) {
+  //   // This case is handled by the error state, but good to have a fallback UI
+  //   return (
+  //     <View style={styles.centeredContainer}>
+  //       <Text style={styles.errorText}>Profile data not available.</Text>
+  //       <Text style={styles.errorSubText}>
+  //         Please log in or complete your profile.
+  //       </Text>
+  //       <TouchableOpacity
+  //         onPress={() => router.replace("/login")}
+  //         style={styles.actionButton}
+  //       >
+  //         <Text style={styles.actionButtonText}>Go to Login</Text>
+  //       </TouchableOpacity>
+  //     </View>
+  //   );
+  // }
 
   // --- Render Main Hub Content ---
   return (
@@ -233,16 +233,13 @@ export default function HubScreen() {
           {/* Use profile_image or avatar from fetched data */}
           <Image
             source={{
-              uri:
-                profile.profile_image ||
-                profile.avatar ||
-                "https://via.placeholder.com/150?text=Avatar",
+              uri: "https://via.placeholder.com/150?text=Avatar",
             }} // Use fetched image, fallback to placeholder
             style={styles.avatar}
           />
 
           {/* Name */}
-          <Text style={styles.profileName}>{profile.name || "No Name"}</Text>
+          <Text style={styles.profileName}>{profile?.name || "No Name"}</Text>
 
           {/* My Profile / My Card Buttons */}
           <View style={styles.buttonContainer}>
@@ -274,16 +271,20 @@ export default function HubScreen() {
 
           {/* Skills/Badges (based on design image, seems to show skill type and user type) */}
           <View style={styles.badgesContainer}>
-            {profile.skill_type && (
+            {profile?.skill_type && (
               <View style={styles.badge}>
-                <Text style={styles.badgeText}>{profile.skill_type}</Text>
+                <Text style={styles.badgeText}>
+                  {profile.skill_type || "test skill"}
+                </Text>
               </View>
             )}
-            {profile.user_type && (
+            {profile?.user_type && (
               <View style={[styles.badge, styles.userTypeBadge]}>
                 {" "}
                 {/* Style for user type badge */}
-                <Text style={styles.badgeText}>{profile.user_type}</Text>
+                <Text style={styles.badgeText}>
+                  {profile?.user_type || "Freelancer"}
+                </Text>
               </View>
             )}
             {/* If you want to show skills as badges: */}
@@ -299,10 +300,12 @@ export default function HubScreen() {
 
         {/* Locked Features Grid & Analytics */}
         <View style={styles.featuresGrid}>
-          {FEATURE_CARDS_CONFIG.filter((card) => !card.fullWidth).map(
+          {FEATURE_CARDS_CONFIG?.filter((card) => !card.fullWidth).map(
             (feature) => (
               <TouchableOpacity key={feature.id} style={styles.featureCard}>
-                <Text style={styles.featureTitle}>{feature.title}</Text>
+                <Text style={styles.featureTitle}>
+                  {feature?.title || "Feature title"}
+                </Text>
                 {/* Optional: Add specific background images here matching design */}
                 {/* <Image source={...} style={styles.featureCardBackground} /> */}
                 <View style={styles.lockContainer}>
