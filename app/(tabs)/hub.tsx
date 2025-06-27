@@ -8,6 +8,7 @@ import {
   SafeAreaView,
   Image,
   Platform,
+  ImageBackground,
   StatusBar,
   ActivityIndicator, // Import ActivityIndicator
 } from "react-native";
@@ -214,7 +215,7 @@ export default function HubScreen() {
               Alert.alert("Under Development", "Filter options coming soon!");
             }}
           >
-            <Feather name="filter" size={20} color="black" />{" "}
+            <Feather name="menu" size={20} color="black" />{" "}
             {/* Filter icon */}
           </TouchableOpacity>
 
@@ -299,23 +300,33 @@ export default function HubScreen() {
         </View>
 
         {/* Locked Features Grid & Analytics */}
+
         <View style={styles.featuresGrid}>
           {FEATURE_CARDS_CONFIG?.filter((card) => !card.fullWidth).map(
             (feature) => (
-              <TouchableOpacity key={feature.id} style={styles.featureCard}>
-                <Text style={styles.featureTitle}>
-                  {feature?.title || "Feature title"}
-                </Text>
-                {/* Optional: Add specific background images here matching design */}
-                {/* <Image source={...} style={styles.featureCardBackground} /> */}
-                <View style={styles.lockContainer}>
-                  <Feather name="lock" size={32} color="#C0C0C0" />{" "}
-                  {/* Gray lock icon */}
-                </View>
-              </TouchableOpacity>
+              <ImageBackground
+                source={require("../../assets/reactbg.png")}
+                style={styles.featureCard}
+                resizeMode="cover"
+              >
+                <TouchableOpacity key={feature.id} style={styles.featureCardBackground} >
+                  <Text style={styles.featureTitle}>
+                    {feature?.title || "Feature title"}
+                  </Text>
+                  {/* Optional: Add specific background images here matching design */}
+                  {/* <Image source={...} style={styles.featureCardBackground} /> */}
+                  <View style={styles.lockContainer}>
+                    <Feather name="lock" size={32} color="#C0C0C0" />{" "}
+                    {/* Gray lock icon */}
+                  </View>
+                </TouchableOpacity>
+              </ImageBackground>
+
             )
           )}
         </View>
+
+
 
         {/* Analytics Card (Full Width) */}
         {FEATURE_CARDS_CONFIG.filter((card) => card.fullWidth).map(
@@ -397,6 +408,7 @@ const styles = StyleSheet.create({
   },
   profileCard: {
     backgroundColor: "#fff", // White background
+    borderWidth: 1,
     borderRadius: 24, // Larger border radius
     padding: 24, // Inner padding
     alignItems: "center", // Center content horizontally
@@ -446,7 +458,7 @@ const styles = StyleSheet.create({
   profileButton: {
     // Base style for the two profile buttons
     paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingVertical: 5,
     borderRadius: 20, // Oval shape
     borderWidth: 1,
     alignItems: "center",
@@ -455,26 +467,27 @@ const styles = StyleSheet.create({
   },
   myProfileButton: {
     // "My Profile" specific style
-    backgroundColor: "#E8F5E8", // Light green background
-    borderColor: "#4CAF50", // Green border (adjust to match design)
+    backgroundColor: "#BFD5CD", // Light green background
+    borderColor: "#000000", // Green border (adjust to match design)
   },
   myCardButton: {
     // "My Card" specific style
-    backgroundColor: "#FFF3E0", // Light orange background
-    borderColor: "#FF9800", // Orange border (adjust to match design)
+    backgroundColor: "#F6D3BD", // Light orange background
+    borderColor: "#000000", // Orange border (adjust to match design)
   },
   buttonText: {
     // Base text style for the two profile buttons
-    fontSize: 14,
-    fontWeight: "600", // Semi-bold
+    fontSize: 12,
+    color: "#000000",
+    fontWeight: "500", // Semi-bold
   },
   myProfileText: {
     // "My Profile" text color
-    color: "#388E3C", // Green text
+    color: "#000000", // Green text
   },
   myCardText: {
     // "My Card" text color
-    color: "#F57C00", // Orange text
+    color: "#000000", // Orange text
   },
   badgesContainer: {
     // Container for skill/user type badges
@@ -510,46 +523,47 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between", // Distribute cards horizontally
-    gap: 12, // Space between cards (RN 0.71+)
+    gap: 0, // Space between cards (RN 0.71+)
     marginBottom: 20, // Space below the grid
   },
   featureCard: {
-    // Style for a single feature card (Task, Payment, etc.)
-    width: "48%", // Width for two items per row with space-between and padding
-    aspectRatio: 1.1, // Adjust aspect ratio to match image closer
-    backgroundColor: "#fff", // White background
-    borderRadius: 20, // Rounded corners
-    padding: 20, // Inner padding
-    justifyContent: "space-between", // Space title and lock icon
-    shadowColor: "#000", // Shadow
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 4,
-    position: "relative", // Needed for potential background images
-    overflow: "hidden", // Ensure background image respects border radius
+    width: 180,
+    height: 180,
+    alignItems: "center",
+    justifyContent: "center",
+    // borderWidth: 1,
+    position: "relative",
+    overflow: "hidden",
+      backgroundColor: "white",
+    // padding: 8
   },
+ 
   featureCardBackground: {
-    // Optional: Style for background images within feature cards
-    position: "absolute",
     width: "100%",
+    backgroundColor: "#F6D3BD",
     height: "100%",
+    borderWidth:1,
+    flexDirection:"column",
+    alignItems:"center",
+    justifyContent:"center",
+    gap:10,
     resizeMode: "cover", // Or 'contain', 'stretch'
     opacity: 0.2, // Make it subtle
     zIndex: 0, // Behind title and lock
   },
   featureTitle: {
     // Style for the title inside feature cards
-    fontSize: 15, // Font size
-    fontWeight: "500", // Medium weight
-    color: "#C0C0C0", // Gray color from image
+    fontSize: 20, // Font size
+    fontWeight: "700", // Medium weight
+    textAlign:"center",
+    fontStyle:"italic",
+    color: "#000000", // Gray color from image
     lineHeight: 20, // Adjusted line height for multiline
     // textAlign: 'center', // Optional: if title is always one word
     zIndex: 1, // Ensure title is above background image
   },
   lockContainer: {
-    // Container for the lock icon
-    alignSelf: "flex-end", // Align lock icon to the bottom right
+    
     alignItems: "center",
     justifyContent: "center",
     zIndex: 1, // Ensure lock is above background image
