@@ -1,255 +1,4 @@
-// import React from "react";
-// import {
-//   Dimensions,
-//   Image,
-//   ScrollView,
-//   StyleSheet,
-//   Text,
-//   TouchableOpacity,
-//   View,
-// } from "react-native";
-// // You'll likely need these icon libraries:
-// // expo install @expo/vector-icons
-// import { Feather, Ionicons } from "@expo/vector-icons";
-// import { useRouter } from "expo-router";
-
-// // Get screen width for responsive button sizing
-// const { width } = Dimensions.get("window");
-// // Calculate button size: screen width minus padding, divided by 2, minus spacing
-// const buttonSize = (width - 16 * 2 - 12) / 2; // 16 padding each side, 12 space between
-
-// const router = useRouter();
-// const ProfileDashboardScreen = () => {
-//   const handleEditProfile = () => {
-//     console.log("Edit Profile Pressed");
-//     // Implement navigation or modal for editing profile
-//   };
-
-//   const handleFilterSort = () => {
-//     console.log("Filter/Sort Pressed");
-//     // Implement filter/sort functionality
-//   };
-
-//   const handleSettings = () => {
-//     console.log("Settings Pressed");
-//     // Implement navigation to settings screen
-//   };
-
-//   const handleCategoryPress = (category) => {
-//     console.log(`${category} Pressed`);
-//     router.push(`/(task-management)`);
-//     // Implement navigation or action based on category
-//   };
-
-//   const handleAnalyticsPress = () => {
-//     console.log("Analytics Pressed");
-//     // Implement navigation or action for Analytics
-//   };
-
-//   return (
-//     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-//       {/* Top Profile Card */}
-//       <View style={styles.profileCard}>
-//         {/* Icons */}
-//         <TouchableOpacity
-//           onPress={handleEditProfile}
-//           style={styles.iconTopLeft}
-//         >
-//           <Feather name="edit-2" size={24} color="black" />
-//         </TouchableOpacity>
-//         <TouchableOpacity
-//           onPress={handleFilterSort}
-//           style={styles.iconTopRight1}
-//         >
-//           <Ionicons name="options-outline" size={24} color="black" />
-//         </TouchableOpacity>
-//         <TouchableOpacity onPress={handleSettings} style={styles.iconTopRight2}>
-//           <Ionicons name="settings-outline" size={24} color="black" />
-//         </TouchableOpacity>
-
-//         {/* Avatar and Name */}
-//         <View style={styles.profileInfo}>
-//           <Image
-//             source={{ uri: "https://randomuser.me/api/portraits/men/4.jpg" }} // Replace with actual avatar URL or require()
-//             style={styles.avatar}
-//           />
-//           <Text style={styles.profileName}>Dev Singh</Text>{" "}
-//           {/* Replace with actual name */}
-//         </View>
-//       </View>
-
-//       {/* Category Buttons Grid */}
-//       <View style={styles.gridContainer}>
-//         {/* Task Management */}
-//         <TouchableOpacity
-//           style={[
-//             styles.categoryButton,
-//             { width: buttonSize, height: buttonSize },
-//           ]}
-//           onPress={() => handleCategoryPress("Task Management")}
-//         >
-//           <Text style={styles.categoryEmoji}>📝</Text>
-//           <Text style={styles.categoryEmoji}>📁</Text>
-//           <Text style={styles.categoryText}>Task{"\n"}Management</Text>{" "}
-//           {/* Use {"\n"} for line break */}
-//         </TouchableOpacity>
-
-//         {/* Payment */}
-//         <TouchableOpacity
-//           style={[
-//             styles.categoryButton,
-//             { width: buttonSize, height: buttonSize },
-//           ]}
-//           onPress={() => handleCategoryPress("Payment")}
-//         >
-//           <Text style={styles.categoryEmoji}>💳</Text>
-//           <Text style={styles.categoryText}>Payment</Text>
-//         </TouchableOpacity>
-
-//         {/* Skill Clash */}
-//         <TouchableOpacity
-//           style={[
-//             styles.categoryButton,
-//             { width: buttonSize, height: buttonSize },
-//           ]}
-//           onPress={() => handleCategoryPress("Skill Clash")}
-//         >
-//           <Text style={styles.categoryEmoji}>🏆</Text>
-//           <Text style={styles.categoryText}>Skill Clash</Text>
-//         </TouchableOpacity>
-
-//         {/* Courses */}
-//         <TouchableOpacity
-//           style={[
-//             styles.categoryButton,
-//             { width: buttonSize, height: buttonSize },
-//           ]}
-//           onPress={() => handleCategoryPress("Courses")}
-//         >
-//           <Text style={styles.categoryEmoji}>📁</Text>
-//           <Text style={styles.categoryEmoji}>📄</Text>
-//           <Text style={styles.categoryText}>Courses</Text>
-//         </TouchableOpacity>
-//       </View>
-
-//       {/* Analytics Button */}
-//       <TouchableOpacity
-//         style={styles.analyticsButton}
-//         onPress={handleAnalyticsPress}
-//       >
-//         <Text style={styles.analyticsButtonText}>Analytics</Text>
-//       </TouchableOpacity>
-//     </ScrollView>
-//   );
-// };
-
-// const styles = StyleSheet.create({
-//   container: {
-//     flex: 1,
-//     backgroundColor: "#f0f0f0", // Light grey background
-//     padding: 16,
-//   },
-//   profileCard: {
-//     backgroundColor: "#fff",
-//     borderRadius: 15,
-//     paddingVertical: 20, // Vertical padding to give space
-//     paddingHorizontal: 15,
-//     marginBottom: 20,
-//     alignItems: "center", // Center content horizontally
-//     // Shadow for Android
-//     elevation: 3,
-//     // Shadow for iOS
-//     shadowColor: "#000",
-//     shadowOffset: { width: 0, height: 2 },
-//     shadowOpacity: 0.15,
-//     shadowRadius: 3.84,
-//     position: "relative", // Needed for absolute positioning of icons
-//   },
-//   iconTopLeft: {
-//     position: "absolute",
-//     top: 15,
-//     left: 15,
-//     padding: 5, // Increase tappable area
-//     zIndex: 1, // Ensure icon is above other content
-//   },
-//   iconTopRight1: {
-//     position: "absolute",
-//     top: 15,
-//     right: 50, // Position relative to the settings icon
-//     padding: 5,
-//     zIndex: 1,
-//   },
-//   iconTopRight2: {
-//     position: "absolute",
-//     top: 15,
-//     right: 15,
-//     padding: 5,
-//     zIndex: 1,
-//   },
-//   profileInfo: {
-//     alignItems: "center", // Center avatar and name
-//     marginTop: 10, // Space below top icons
-//   },
-//   avatar: {
-//     width: 80,
-//     height: 80,
-//     borderRadius: 40, // Make it round
-//     marginBottom: 8,
-//   },
-//   profileName: {
-//     fontSize: 20,
-//     fontWeight: "bold",
-//   },
-//   gridContainer: {
-//     flexDirection: "row",
-//     flexWrap: "wrap", // Allow items to wrap to the next row
-//     justifyContent: "space-between", // Space out items
-//     marginBottom: 20,
-//   },
-//   categoryButton: {
-//     backgroundColor: "#FFECD9", // Light peach color
-//     borderRadius: 15,
-//     padding: 15,
-//     marginBottom: 12, // Space below each button
-//     alignItems: "center",
-//     justifyContent: "center",
-//     // Add shadow for elevation
-//     elevation: 2,
-//     shadowColor: "#000",
-//     shadowOffset: { width: 0, height: 1 },
-//     shadowOpacity: 0.1,
-//     shadowRadius: 2,
-//   },
-//   categoryEmoji: {
-//     fontSize: 30, // Size of the emoji/icon
-//     marginBottom: 4,
-//   },
-//   categoryText: {
-//     fontSize: 14,
-//     fontWeight: "bold",
-//     textAlign: "center",
-//     marginTop: 4,
-//   },
-//   analyticsButton: {
-//     backgroundColor: "#fff", // White background
-//     borderRadius: 15,
-//     padding: 20,
-//     alignItems: "center",
-//     // Add shadow for elevation
-//     elevation: 3,
-//     shadowColor: "#000",
-//     shadowOffset: { width: 0, height: 2 },
-//     shadowOpacity: 0.15,
-//     shadowRadius: 3.84,
-//   },
-//   analyticsButtonText: {
-//     fontSize: 18,
-//     fontWeight: "bold",
-//   },
-// });
-
-// export default ProfileDashboardScreen;
-
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -260,249 +9,578 @@ import {
   Image,
   Platform,
   StatusBar,
+  ActivityIndicator, // Import ActivityIndicator
 } from "react-native";
+import { Feather } from "@expo/vector-icons"; // Import Feather for icons
+import { useRouter } from "expo-router";
+import { useSession } from "@/utils/AuthContext"; // Assuming this context provides session/user ID
+import { supabase } from "@/lib/supabase"; // Import your Supabase client
 
-const HubScreen = ({ navigation }) => {
-  const userProfile = {
-    name: "Erik Tyler",
-    role: "App developer",
-    avatar: "/placeholder.svg?height=60&width=60",
-    portfolio: "Website/Portfolio",
-  };
+// Define the configuration for the locked feature cards
+const FEATURE_CARDS_CONFIG = [
+  { id: "task_management", title: "Task\nManagement", locked: true }, // Title can include \n for multiline
+  { id: "payment", title: "Payment", locked: true },
+  { id: "skill_clash", title: "Skill Clash", locked: true },
+  { id: "courses", title: "Courses", locked: true },
+  { id: "analytics", title: "Analytics", locked: true, fullWidth: true }, // Flag for full width
+];
 
-  const lockedCards = Array(6).fill(null);
+export default function HubScreen() {
+  const { session, isLoading: isSessionLoading } = useSession(); // Get session and its loading state
+  const [profile, setProfile] = useState<any>(null); // State to store the fetched user profile
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true); // State for profile fetching loading
+  const [error, setError] = useState<string | null>(null); // State for fetch errors
 
+  console.log(session, "ss");
+  const router = useRouter();
+
+  // --- Fetch Profile Data ---
+  useEffect(() => {
+    const fetchProfile = async () => {
+      // Only proceed if session is loaded and a user ID is available
+      if (isSessionLoading || !session) {
+        if (!isSessionLoading) {
+          // If session finished loading but no user, handle unauthenticated
+          console.warn("Session or User ID not available for profile fetch.");
+          setIsLoadingProfile(false); // Stop loading state
+          setProfile(null); // Ensure profile is null
+          setError("User not authenticated."); // Set an error message
+          // Optionally redirect to login if user is expected to be authenticated
+          // router.replace('/login');
+        }
+        return; // Don't fetch if not ready
+      }
+
+      setIsLoadingProfile(true); // Start loading indicator
+      setError(null); // Clear previous errors
+      console.log("Fetching profile for user ID:", session);
+
+      try {
+        const { data, error } = await supabase
+          .from("users") // Query your 'users' table
+          .select(
+            `
+            id, name, user_type, age, gender, location, latitude, longitude,
+            profile_image, face, skill_type, short_bio, business_card,
+            certificates, work_experience, skills, social_links,
+            avatar, status, expoPushToken
+          `
+          ) // Select all fields needed for the hub screen (adjust as per your schema and display needs)
+          .eq("id::uuid", session as string); // Add 'as string' for TypeScript clarity          .single(); // Expecting a single row
+
+        if (error && error.code !== "PGRST116") {
+          // PGRST116 is 'No rows found', which is an expected case if profile creation failed earlier
+          console.error("Supabase profile fetch error:", error);
+          throw new Error(error.message || "Failed to fetch profile data.");
+        }
+
+        if (data) {
+          console.log("Profile fetched successfully.");
+          setProfile(data); // Store the fetched data
+        } else {
+          // Case where user is authenticated but no profile exists in 'users' table
+          console.warn(
+            "Profile data not found in 'users' table for user ID:",
+            session
+          );
+          setProfile(null); // Ensure profile is null
+          setError(
+            "Profile data incomplete. Please complete your registration or contact support."
+          );
+          // Optional: Redirect to the registration flow if profile is missing
+          // router.replace('/registration'); // Adjust path if needed
+        }
+      } catch (err: any) {
+        console.error("Error fetching profile:", err);
+        setError(err.message || "Failed to load profile."); // Set the error message
+        setProfile(null); // Ensure profile is null on error
+      } finally {
+        setIsLoadingProfile(false); // Stop loading indicator
+      }
+    };
+
+    // Call the fetch function
+    fetchProfile();
+  }, [session, isSessionLoading]); // Re-run effect if session or its loading state changes
+
+  // --- Conditional Rendering: Loading, Error, or Content ---
+  if (isLoadingProfile || isSessionLoading) {
+    return (
+      <View style={styles.centeredContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loadingText}>Loading profile...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.centeredContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+        {/* Add a button to retry or go to login/registration */}
+        {!session && ( // If no session, prompt login
+          <TouchableOpacity
+            onPress={() => router.replace("/login")}
+            style={styles.actionButton}
+          >
+            <Text style={styles.actionButtonText}>Go to Login</Text>
+          </TouchableOpacity>
+        )}
+        {session &&
+          !profile && ( // If session but no profile, prompt registration or retry
+            <>
+              <Text style={styles.errorSubText}>
+                Please ensure your profile is complete.
+              </Text>
+              {/* Optional: Button to retry fetch or go to registration */}
+              {/* <TouchableOpacity onPress={() => fetchProfile()} style={styles.actionButton}>
+                          <Text style={styles.actionButtonText}>Retry</Text>
+                      </TouchableOpacity> */}
+              {/* Or direct to registration if that's the flow */}
+            </>
+          )}
+        {/* For other fetch errors, just show the error message */}
+      </View>
+    );
+  }
+
+  // If we reach here, profile is loaded (or null if error was just a warning)
+  // Check if profile is actually null before rendering main content
+  if (!profile) {
+    // This case is handled by the error state, but good to have a fallback UI
+    return (
+      <View style={styles.centeredContainer}>
+        <Text style={styles.errorText}>Profile data not available.</Text>
+        <Text style={styles.errorSubText}>
+          Please log in or complete your profile.
+        </Text>
+        <TouchableOpacity
+          onPress={() => router.replace("/login")}
+          style={styles.actionButton}
+        >
+          <Text style={styles.actionButtonText}>Go to Login</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // --- Render Main Hub Content ---
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Hub</Text>
-        <View style={styles.headerIcons}>
-          <TouchableOpacity style={styles.iconButton}>
-            <Text style={styles.icon}>☰</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton}>
-            <Text style={styles.icon}>⚙️</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      {/* Use a platform-specific StatusBar style */}
+      <StatusBar
+        barStyle={Platform.OS === "ios" ? "dark-content" : "light-content"}
+        backgroundColor="#fff"
+      />
+
+      {/* Header - Removed from the image design */}
+      {/* <View style={styles.header}>
+        <TouchableOpacity style={styles.headerButton}>
+          <Feather name="menu" size={24} color="#000" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.headerButton}>
+          <Feather name="settings" size={24} color="#000" />
+        </TouchableOpacity>
+      </View> */}
 
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
       >
-        {/* Main Business Card */}
-        <TouchableOpacity
-          style={styles.mainCard}
-          onPress={() =>
-            navigation.navigate("BusinessCard", { profile: userProfile })
-          }
-        >
-          <Image source={{ uri: userProfile.avatar }} style={styles.avatar} />
-          <View style={styles.cardInfo}>
-            <Text style={styles.cardName}>{userProfile.name}</Text>
-            <Text style={styles.cardRole}>{userProfile.role}</Text>
-            <Text style={styles.cardPortfolio}>{userProfile.portfolio}</Text>
-          </View>
-          <View style={styles.cardBadges}>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>App developer</Text>
-            </View>
-            <View style={[styles.badge, styles.redBadge]}>
-              <Text style={styles.badgeText}>UI Expert</Text>
-            </View>
-          </View>
-        </TouchableOpacity>
+        {/* Main Profile Card */}
+        <View style={styles.profileCard}>
+          {/* Icons positioned absolutely within the main card */}
+          <TouchableOpacity
+            style={[styles.iconButton, styles.editIcon]}
+            onPress={() => {
+              console.log("Edit profile pressed");
+              // Navigate to your profile edit screen, potentially passing current profile data
+              router.push("/(registration)/basic-information"); // Example route to basic info
+              // You might need a dedicated 'EditProfile' screen that loads data
+              // or pass profile.id as a parameter
+            }}
+          >
+            <Feather name="edit-3" size={20} color="black" />{" "}
+            {/* Pencil icon variant */}
+          </TouchableOpacity>
 
-        {/* Locked Cards Grid */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Flock</Text>
-          <View style={styles.cardsGrid}>
-            {lockedCards.map((_, index) => (
-              <TouchableOpacity key={index} style={styles.lockedCard}>
-                <Text style={styles.lockIcon}>🔒</Text>
-              </TouchableOpacity>
-            ))}
+          <TouchableOpacity
+            style={[styles.iconButton, styles.filterIcon]}
+            onPress={() => {
+              console.log("Filter pressed");
+              // Handle filter logic or navigate to filter screen
+              // Example: router.push('/filter-settings');
+              Alert.alert("Under Development", "Filter options coming soon!");
+            }}
+          >
+            <Feather name="filter" size={20} color="black" />{" "}
+            {/* Filter icon */}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.iconButton, styles.settingsIcon]}
+            onPress={() => {
+              console.log("Settings pressed");
+              router.push("/(settings)"); // Navigate to settings screen
+            }}
+          >
+            <Feather name="settings" size={20} color="black" />{" "}
+            {/* Settings icon */}
+          </TouchableOpacity>
+
+          {/* Avatar */}
+          {/* Use profile_image or avatar from fetched data */}
+          <Image
+            source={{
+              uri:
+                profile.profile_image ||
+                profile.avatar ||
+                "https://via.placeholder.com/150?text=Avatar",
+            }} // Use fetched image, fallback to placeholder
+            style={styles.avatar}
+          />
+
+          {/* Name */}
+          <Text style={styles.profileName}>{profile.name || "No Name"}</Text>
+
+          {/* My Profile / My Card Buttons */}
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={[styles.profileButton, styles.myProfileButton]}
+              onPress={() => {
+                console.log("My Profile pressed");
+                // Navigate to detailed profile view
+                // router.push(`/profile-view/${profile.id}`); // Example
+                Alert.alert(
+                  "Under Development",
+                  "Detailed Profile view coming soon!"
+                );
+              }}
+            >
+              <Text style={[styles.buttonText, styles.myProfileText]}>
+                My Profile
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.profileButton, styles.myCardButton]}
+              onPress={() => router.push("/business-card")} // Navigate to business card screen
+            >
+              <Text style={[styles.buttonText, styles.myCardText]}>
+                My Card
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Skills/Badges (based on design image, seems to show skill type and user type) */}
+          <View style={styles.badgesContainer}>
+            {profile.skill_type && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{profile.skill_type}</Text>
+              </View>
+            )}
+            {profile.user_type && (
+              <View style={[styles.badge, styles.userTypeBadge]}>
+                {" "}
+                {/* Style for user type badge */}
+                <Text style={styles.badgeText}>{profile.user_type}</Text>
+              </View>
+            )}
+            {/* If you want to show skills as badges: */}
+            {/*
+               {Array.isArray(profile.skills) && profile.skills.map((skill: any, index: number) => (
+                   <View key={index} style={styles.badge}>
+                       <Text style={styles.badgeText}>{typeof skill === 'string' ? skill : skill?.name || ''}</Text>
+                   </View>
+               ))}
+               */}
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Payments</Text>
-          <View style={styles.cardsGrid}>
-            {lockedCards.slice(0, 2).map((_, index) => (
-              <TouchableOpacity key={index} style={styles.lockedCard}>
-                <Text style={styles.lockIcon}>🔒</Text>
+        {/* Locked Features Grid & Analytics */}
+        <View style={styles.featuresGrid}>
+          {FEATURE_CARDS_CONFIG.filter((card) => !card.fullWidth).map(
+            (feature) => (
+              <TouchableOpacity key={feature.id} style={styles.featureCard}>
+                <Text style={styles.featureTitle}>{feature.title}</Text>
+                {/* Optional: Add specific background images here matching design */}
+                {/* <Image source={...} style={styles.featureCardBackground} /> */}
+                <View style={styles.lockContainer}>
+                  <Feather name="lock" size={32} color="#C0C0C0" />{" "}
+                  {/* Gray lock icon */}
+                </View>
               </TouchableOpacity>
-            ))}
-          </View>
+            )
+          )}
         </View>
 
-        {/* Analytics */}
-        <TouchableOpacity style={styles.analyticsCard}>
-          <Text style={styles.analyticsTitle}>Analytics</Text>
-          <Text style={styles.lockIcon}>🔒</Text>
-        </TouchableOpacity>
+        {/* Analytics Card (Full Width) */}
+        {FEATURE_CARDS_CONFIG.filter((card) => card.fullWidth).map(
+          (feature) => (
+            <TouchableOpacity key={feature.id} style={styles.analyticsCard}>
+              {/* Optional: Add specific background images here */}
+              {/* <Image source={...} style={styles.analyticsCardBackground} /> */}
+              <Text style={styles.analyticsTitle}>{feature.title}</Text>
+              <View style={styles.lockContainer}>
+                <Feather name="lock" size={32} color="#C0C0C0" />{" "}
+                {/* Gray lock icon */}
+              </View>
+            </TouchableOpacity>
+          )
+        )}
+
+        {/* Add bottom padding for the scroll view */}
+        <View style={{ height: 20 }} />
       </ScrollView>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    marginTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#f8f9fa", // Light background color
   },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  centeredContainer: {
+    // Used for loading/error states
+    flex: 1,
+    justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: "#fff",
+    backgroundColor: "#f8f9fa",
+    padding: 20,
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#000",
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: "#333",
   },
-  headerIcons: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  iconButton: {
-    padding: 8,
-  },
-  icon: {
+  errorText: {
     fontSize: 18,
+    fontWeight: "bold",
+    textAlign: "center",
+    color: "#FF6347", // Error color
+    marginBottom: 8,
   },
+  errorSubText: {
+    fontSize: 14,
+    textAlign: "center",
+    color: "#666",
+    marginBottom: 15,
+  },
+  actionButton: {
+    // Simple action button style for retry/login
+    marginTop: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    backgroundColor: "#007AFF",
+    borderRadius: 8,
+  },
+  actionButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  // Header styles removed as per design image
+  // header: { ... },
+  // headerButton: { ... },
+
   scrollView: {
     flex: 1,
-    paddingHorizontal: 16,
   },
-  mainCard: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 20,
-    marginVertical: 16,
-    shadowColor: "#000",
+  scrollContent: {
+    flexGrow: 1, // Allows content to expand
+    padding: 16, // Padding around all content inside scroll view
+    paddingBottom: 30, // Extra padding at the bottom
+  },
+  profileCard: {
+    backgroundColor: "#fff", // White background
+    borderRadius: 24, // Larger border radius
+    padding: 24, // Inner padding
+    alignItems: "center", // Center content horizontally
+    marginBottom: 20, // Space below card
+    shadowColor: "#000", // Shadow
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.08, // Adjusted opacity
+    shadowRadius: 8,
+    elevation: 4,
+    position: "relative", // Needed for absolute positioning of icons
   },
+  // Icons positioned absolutely within the profile card
+  iconButton: {
+    padding: 8, // Make touch area easier
+    position: "absolute",
+    zIndex: 1, // Ensure icons are tappable
+  },
+  editIcon: { top: 10, left: 10 }, // Position edit icon (pencil)
+  filterIcon: { top: 10, right: 40 }, // Position filter icon
+  settingsIcon: { top: 10, right: 10 }, // Position settings icon
+
   avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "#e0e0e0",
-    marginBottom: 12,
+    width: 90, // Larger avatar size
+    height: 90,
+    borderRadius: 45, // Circular
+    marginBottom: 16, // Space below avatar
+    backgroundColor: "#e0e0e0", // Placeholder background
+    borderWidth: 3, // Border around avatar
+    borderColor: "#fff", // White border initially
+    // Note: The image shows a light background color behind the avatar, not a border
+    // You could achieve this with a View behind the avatar
+    // Example: <View style={styles.avatarBackground}><Image ... /></View>
+    // avatarBackground: { width: 96, height: 96, borderRadius: 48, backgroundColor: '#E0F2F7', justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
   },
-  cardInfo: {
-    marginBottom: 12,
-  },
-  cardName: {
-    fontSize: 20,
-    fontWeight: "bold",
+  profileName: {
+    fontSize: 26, // Larger font for name
+    fontWeight: "bold", // Bold
     color: "#000",
-    marginBottom: 4,
+    marginBottom: 15, // Space below name
+    textAlign: "center", // Center text
   },
-  cardRole: {
-    fontSize: 16,
-    color: "#666",
-    marginBottom: 4,
+  buttonContainer: {
+    flexDirection: "row", // Buttons side-by-side
+    gap: 12, // Space between buttons (RN 0.71+), or use margin
+    marginBottom: 15, // Space below button row
   },
-  cardPortfolio: {
+  profileButton: {
+    // Base style for the two profile buttons
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20, // Oval shape
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center", // Center content
+    minWidth: 100, // Minimum width
+  },
+  myProfileButton: {
+    // "My Profile" specific style
+    backgroundColor: "#E8F5E8", // Light green background
+    borderColor: "#4CAF50", // Green border (adjust to match design)
+  },
+  myCardButton: {
+    // "My Card" specific style
+    backgroundColor: "#FFF3E0", // Light orange background
+    borderColor: "#FF9800", // Orange border (adjust to match design)
+  },
+  buttonText: {
+    // Base text style for the two profile buttons
     fontSize: 14,
-    color: "#007AFF",
+    fontWeight: "600", // Semi-bold
   },
-  cardBadges: {
+  myProfileText: {
+    // "My Profile" text color
+    color: "#388E3C", // Green text
+  },
+  myCardText: {
+    // "My Card" text color
+    color: "#F57C00", // Orange text
+  },
+  badgesContainer: {
+    // Container for skill/user type badges
     flexDirection: "row",
-    gap: 8,
+    flexWrap: "wrap",
+    justifyContent: "center", // Center badges
+    gap: 8, // Space between badges
+    marginTop: 10, // Space above badges
+    // marginBottom: 15, // Space below badges (handled by featuresGrid margin)
   },
   badge: {
-    backgroundColor: "#E8F4FD",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
+    // Style for a single badge
+    backgroundColor: "#E0F2F7", // Light blue/teal background
+    borderColor: "#00BCD4", // Teal border
+    borderWidth: 1,
+    borderRadius: 12, // Rounded corners
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
-  redBadge: {
-    backgroundColor: "#FFE8E8",
+  userTypeBadge: {
+    // Example: Style for the user type badge if different color is needed
+    backgroundColor: "#FFEDD5", // Light orange background
+    borderColor: "#FF9800", // Orange border
   },
   badgeText: {
     fontSize: 12,
-    color: "#333",
     fontWeight: "500",
+    color: "#333", // Dark text
   },
-  section: {
-    marginVertical: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#000",
-    marginBottom: 12,
-  },
-  cardsGrid: {
+
+  featuresGrid: {
+    // Container for the 2x2 feature cards
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 12,
+    justifyContent: "space-between", // Distribute cards horizontally
+    gap: 12, // Space between cards (RN 0.71+)
+    marginBottom: 20, // Space below the grid
   },
-  lockedCard: {
-    width: "47%",
-    aspectRatio: 1.5,
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    justifyContent: "center",
+  featureCard: {
+    // Style for a single feature card (Task, Payment, etc.)
+    width: "48%", // Width for two items per row with space-between and padding
+    aspectRatio: 1.1, // Adjust aspect ratio to match image closer
+    backgroundColor: "#fff", // White background
+    borderRadius: 20, // Rounded corners
+    padding: 20, // Inner padding
+    justifyContent: "space-between", // Space title and lock icon
+    shadowColor: "#000", // Shadow
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+    position: "relative", // Needed for potential background images
+    overflow: "hidden", // Ensure background image respects border radius
+  },
+  featureCardBackground: {
+    // Optional: Style for background images within feature cards
+    position: "absolute",
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover", // Or 'contain', 'stretch'
+    opacity: 0.2, // Make it subtle
+    zIndex: 0, // Behind title and lock
+  },
+  featureTitle: {
+    // Style for the title inside feature cards
+    fontSize: 15, // Font size
+    fontWeight: "500", // Medium weight
+    color: "#C0C0C0", // Gray color from image
+    lineHeight: 20, // Adjusted line height for multiline
+    // textAlign: 'center', // Optional: if title is always one word
+    zIndex: 1, // Ensure title is above background image
+  },
+  lockContainer: {
+    // Container for the lock icon
+    alignSelf: "flex-end", // Align lock icon to the bottom right
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  lockIcon: {
-    fontSize: 24,
-    opacity: 0.5,
+    justifyContent: "center",
+    zIndex: 1, // Ensure lock is above background image
   },
   analyticsCard: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 20,
-    marginVertical: 16,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    // Style for the full-width analytics card
+    backgroundColor: "#fff", // White background
+    borderRadius: 20, // Rounded corners
+    padding: 24, // Inner padding (slightly more vertical padding seems implied)
+    flexDirection: "row", // Align title and lock horizontally
+    justifyContent: "space-between", // Space between title and lock
+    alignItems: "center", // Vertically align center
+    shadowColor: "#000", // Shadow
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+    position: "relative", // Needed for potential background images
+    overflow: "hidden", // Ensure background image respects border radius
+  },
+  analyticsCardBackground: {
+    // Optional: Style for background images within analytics card
+    position: "absolute",
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover", // Or 'contain', 'stretch'
+    opacity: 0.2, // Make it subtle
+    zIndex: 0, // Behind title and lock
   },
   analyticsTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#000",
-  },
-  bottomNav: {
-    flexDirection: "row",
-    backgroundColor: "#fff",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderTopWidth: 1,
-    borderTopColor: "#e0e0e0",
-  },
-  navItem: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 8,
-    opacity: 0.5,
-  },
-  activeNavItem: {
-    opacity: 1,
-  },
-  navIcon: {
-    fontSize: 24,
+    // Style for the analytics title
+    fontSize: 18, // Font size
+    fontWeight: "500", // Medium weight
+    color: "#C0C0C0", // Gray color from image
+    zIndex: 1, // Ensure title is above background image
   },
 });
-
-export default HubScreen;

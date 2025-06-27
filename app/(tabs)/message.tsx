@@ -23,18 +23,18 @@ import io, { Socket } from "socket.io-client";
 import { API_BASE_URL } from "@/env";
 
 // --- NEW IMPORTS FOR NOTIFICATIONS ---
-// import * as Notifications from 'expo-notifications';
-// import * as Device from 'expo-device'; // To check if it's a physical device
+import * as Notifications from "expo-notifications";
+import * as Device from "expo-device"; // To check if it's a physical device
 
-// // --- NOTIFICATION HANDLER CONFIGURATION ---
-// // This configures how notifications are handled when the app is in the foreground.
-// Notifications.setNotificationHandler({
-//   handleNotification: async () => ({
-//     shouldShowAlert: true, // Display a native alert (banner)
-//     shouldPlaySound: true, // Play a notification sound
-//     shouldSetBadge: false, // Don't modify the app icon badge
-//   }),
-// });
+// --- NOTIFICATION HANDLER CONFIGURATION ---
+// This configures how notifications are handled when the app is in the foreground.
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true, // Display a native alert (banner)
+    shouldPlaySound: true, // Play a notification sound
+    shouldSetBadge: false, // Don't modify the app icon badge
+  }),
+});
 
 const MessagesListScreen = () => {
   const router = useRouter();
@@ -54,97 +54,111 @@ const MessagesListScreen = () => {
   const expoPushTokenRef = useRef<string | null>(null); // Ref to store the Expo Push Token
 
   // --- Push Notification Setup ---
-  // const registerForPushNotificationsAsync = useCallback(async () => {
-  //   if (Device.isDevice) { // Only attempt to get a token on a physical device
-  //     const { status: existingStatus } = await Notifications.getPermissionsAsync();
-  //     let finalStatus = existingStatus;
+  const registerForPushNotificationsAsync = useCallback(async () => {
+    if (Device.isDevice) {
+      // Only attempt to get a token on a physical device
+      const { status: existingStatus } =
+        await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
 
-  //     // If permission hasn't been granted, request it
-  //     if (existingStatus !== 'granted') {
-  //       const { status } = await Notifications.requestPermissionsAsync();
-  //       finalStatus = status;
-  //     }
+      // If permission hasn't been granted, request it
+      if (existingStatus !== "granted") {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
 
-  //     // If permission is still not granted, alert the user
-  //     if (finalStatus !== 'granted') {
-  //       Alert.alert('Permission Denied', 'Failed to get push token for push notifications! Please enable notifications in your device settings.');
-  //       return;
-  //     }
+      // If permission is still not granted, alert the user
+      if (finalStatus !== "granted") {
+        Alert.alert(
+          "Permission Denied",
+          "Failed to get push token for push notifications! Please enable notifications in your device settings."
+        );
+        return;
+      }
 
-  //     // Get the Expo Push Token
-  //     // const token = (await Notifications.getExpoPushTokenAsync()).data;
-  //     console.log('Expo Push Token:', token);
-  //     expoPushTokenRef.current = token;
+      // Get the Expo Push Token
+      const token = (await Notifications.getExpoPushTokenAsync()).data;
+      console.log("Expo Push Token:", token);
+      expoPushTokenRef.current = token;
 
-  //     // --- Send the token to your backend ---
-  //     // This step is CRUCIAL: your backend needs to store this token
-  //     // associated with the `loggedInUserId` to send notifications later.
-  //     if (loggedInUserId && token) {
-  //       try {
-  //         // You need to implement this `saveExpoPushToken` function in your `ChatAPI`
-  //         await ChatAPI.saveExpoPushToken(loggedInUserId, token);
-  //         console.log('Expo Push Token sent to backend successfully.');
-  //       } catch (error) {
-  //         console.error('Failed to send Expo Push Token to backend:', error);
-  //       }
-  //     }
-  //   } else {
-  //     // Alert if not on a physical device (push notifications don't work on emulators/simulators)
-  //     Alert.alert('Not on physical device', 'Must use a physical device for Push Notifications');
-  //   }
+      // --- Send the token to your backend ---
+      // This step is CRUCIAL: your backend needs to store this token
+      // associated with the `loggedInUserId` to send notifications later.
+      if (loggedInUserId && token) {
+        try {
+          // You need to implement this `saveExpoPushToken` function in your `ChatAPI`
+          await ChatAPI.saveExpoPushToken(loggedInUserId, token);
+          console.log("Expo Push Token sent to backend successfully.");
+        } catch (error) {
+          console.error("Failed to send Expo Push Token to backend:", error);
+        }
+      }
+    } else {
+      // Alert if not on a physical device (push notifications don't work on emulators/simulators)
+      Alert.alert(
+        "Not on physical device",
+        "Must use a physical device for Push Notifications"
+      );
+    }
 
-  //   // --- Android Specific: Notification Channel ---
-  //   // For Android, you need to set up a notification channel for importance and sound.
-  //   if (Platform.OS === 'android') {
-  //     Notifications.setNotificationChannelAsync('default', {
-  //       name: 'default',
-  //       importance: Notifications.AndroidImportance.MAX, // High importance for chat messages
-  //       vibrationPattern: [0, 250, 250, 250], // Vibrate pattern
-  //       lightColor: '#FF231F7C', // Notification light color
-  //     });
-  //   }
-  // }, [loggedInUserId]); // Re-run this effect if loggedInUserId changes
+    // --- Android Specific: Notification Channel ---
+    // For Android, you need to set up a notification channel for importance and sound.
+    if (Platform.OS === "android") {
+      Notifications.setNotificationChannelAsync("default", {
+        name: "default",
+        importance: Notifications.AndroidImportance.MAX, // High importance for chat messages
+        vibrationPattern: [0, 250, 250, 250], // Vibrate pattern
+        lightColor: "#FF231F7C", // Notification light color
+      });
+    }
+  }, [loggedInUserId]); // Re-run this effect if loggedInUserId changes
 
   // --- Effect Hook for Notification Registration and Listeners ---
-  // useEffect(() => {
-  //   registerForPushNotificationsAsync(); // Call the function to register for notifications
+  useEffect(() => {
+    registerForPushNotificationsAsync(); // Call the function to register for notifications
 
-  //   // This listener fires whenever a notification is received while the app is foregrounded.
-  //   const notificationListener = Notifications.addNotificationReceivedListener(notification => {
-  //     console.log("Notification received in foreground:", notification);
-  //     // You can add logic here to update UI, display a custom in-app banner,
-  //     // or refresh the chat list if the notification contains relevant data.
-  //     // Example: fetchActiveChats();
-  //   });
+    // This listener fires whenever a notification is received while the app is foregrounded.
+    const notificationListener = Notifications.addNotificationReceivedListener(
+      (notification) => {
+        console.log("Notification received in foreground:", notification);
+        // You can add logic here to update UI, display a custom in-app banner,
+        // or refresh the chat list if the notification contains relevant data.
+        // Example: fetchActiveChats();
+      }
+    );
 
-  //   // This listener fires whenever a user taps on a notification (when the app is foregrounded, backgrounded, or killed).
-  //   const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
-  //     console.log("Notification response received (tapped):", response);
-  //     const { notification } = response;
-  //     // You would typically navigate to the specific chat screen here.
-  //     // The `notification.request.content.data` object should contain
-  //     // the `matchId` and `otherUserId` sent from your backend.
-  //     //
-  //     // Example navigation:
-  //     // if (notification.request.content.data && notification.request.content.data.matchId) {
-  //     //   router.push({
-  //     //     pathname: "/chat/[id]",
-  //     //     params: {
-  //     //       id: notification.request.content.data.otherUserId, // Assuming you pass otherUserId
-  //     //       userName: notification.request.content.data.otherUserName, // If you pass it
-  //     //       userAvatar: notification.request.content.data.otherUserAvatar, // If you pass it
-  //     //       matchId: notification.request.content.data.matchId,
-  //     //     },
-  //     //   });
-  //     // }
-  //   });
+    // This listener fires whenever a user taps on a notification (when the app is foregrounded, backgrounded, or killed).
+    const responseListener =
+      Notifications.addNotificationResponseReceivedListener((response) => {
+        console.log("Notification response received (tapped):", response);
+        const { notification } = response;
+        // You would typically navigate to the specific chat screen here.
+        // The `notification.request.content.data` object should contain
+        // the `matchId` and `otherUserId` sent from your backend.
+        //
+        // Example navigation:
+        if (
+          notification.request.content.data &&
+          notification.request.content.data.matchId
+        ) {
+          router.push({
+            pathname: "/chat/[id]",
+            params: {
+              id: notification.request.content.data.otherUserId, // Assuming you pass otherUserId
+              userName: notification.request.content.data.otherUserName, // If you pass it
+              userAvatar: notification.request.content.data.otherUserAvatar, // If you pass it
+              matchId: notification.request.content.data.matchId,
+            },
+          });
+        }
+      });
 
-  //   // Cleanup: Remove notification listeners when the component unmounts
-  //   return () => {
-  //     Notifications.removeNotificationSubscription(notificationListener);
-  //     Notifications.removeNotificationSubscription(responseListener);
-  //   };
-  // }, [registerForPushNotificationsAsync]); // Dependency array: Re-run this effect if `registerForPushNotificationsAsync` changes
+    // Cleanup: Remove notification listeners when the component unmounts
+    return () => {
+      Notifications.removeNotificationSubscription(notificationListener);
+      Notifications.removeNotificationSubscription(responseListener);
+    };
+  }, [registerForPushNotificationsAsync]); // Dependency array: Re-run this effect if `registerForPushNotificationsAsync` changes
 
   // --- Socket.IO Setup for Real-time Online Status and New Messages ---
 

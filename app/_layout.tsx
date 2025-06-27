@@ -10,21 +10,22 @@ import { Slot, Stack, useRouter } from "expo-router"; // Import useRouter
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { View, Text } from "react-native";
+import { useFonts } from "expo-font";
 import "react-native-get-random-values";
 
 export default function RootLayout() {
-  // const [fontsLoaded] = useFonts({
-  //   Montserrat: require("../assets/fonts/Montserrat-Regular.ttf"),
-  //   MontserratBold: require("../assets/fonts/Montserrat-Bold.ttf"),
-  // });
+  const [fontsLoaded] = useFonts({
+    Montserrat: require("../assets/fonts/Montserrat-Regular.ttf"),
+    MontserratBold: require("../assets/fonts/Montserrat-Bold.ttf"),
+  });
 
-  // if (!fontsLoaded) {
-  //   return (
-  //     <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-  //       <Text>Loading fonts...</Text>
-  //     </View>
-  //   );
-  // }
+  if (!fontsLoaded) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <Text>Loading fonts...</Text>
+      </View>
+    );
+  }
 
   return (
     <SessionProvider>

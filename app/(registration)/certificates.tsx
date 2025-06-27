@@ -1,15 +1,15 @@
-import ActionButton from "@/components/ActionButton"; // Custom button
+import ActionButton from "@/components/ActionButton"; // Custom button (for bottom of screen)
 import PageHeader from "@/components/PageHeader"; // Top header bar
-import { useProfileStore } from "../../store/useProfileStore";
-import { formatDate } from "@/utils/dateUtils";
-import { useNavigation } from "@react-navigation/native";
+import QuestionHeader from "@/components/PageHeader/QuestionHeader";
+import { useProfileStore } from "../../store/useProfileStore"; // Assuming correct path
+import { formatDate } from "@/utils/dateUtils"; // Assuming this utility exists
+import { useNavigation } from "@react-navigation/native"; // Assuming this is used for goBack
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
-import QuestionHeader from "@/components/PageHeader/QuestionHeader";
 import React, { useState } from "react";
 import {
   Alert,
-  Button, // Keeping standard Button for dialog, but will replace main ones with ActionButton
+  // Button, // REMOVE standard Button import
   FlatList,
   Image,
   Platform,
@@ -19,62 +19,75 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  ActivityIndicator, // Needed for upload indicator in modal if added
 } from "react-native";
 
-// Assuming your useProfileStore.ts file is in the same directory as this component's parent
-// and has an addCertificate function that generates unique IDs (e.g., using uuid)
-// For example, in useProfileStore.ts:
-/*
-import { create } from 'zustand';
-import { v4 as uuidv4 } from 'uuid'; // Requires 'react-native-get-random-values' import at app entry
+// Assuming your useProfileStore.ts is set up with 'id' for certificates
+// and has addCertificate, removeCertificate, completeStep, setCurrentStep actions.
+// And formatDate utility exists.
 
-interface Certificate {
-  id: string; // Add ID for FlatList keyExtractor and removal
-  title: string;
-  organization: string;
-  issueDate?: string;
-  imageUrl?: string;
-  certificateUrl?: string;
+// --- Inline Custom Modal Button Component ---
+// Reusing the Button component logic from the AuthPage example,
+// but tailored for the modal's button styles.
+interface ModalButtonProps {
+  children: React.ReactNode;
+  onPress: () => void;
+  style?: ViewStyle;
+  textStyle?: TextStyle;
+  disabled?: boolean;
+  isLoading?: boolean; // Added loading prop for modal buttons
 }
 
-interface ProfileState {
-  profile: {
-    certificates: Certificate[];
-    // ... other profile info
-  };
-  addCertificate: (cert: Omit<Certificate, 'id'>) => void;
-  removeCertificate: (id: string) => void;
-  setCurrentStep: (step: number) => void;
-  completeStep: (step: number) => void;
-}
+const ModalButton: React.FC<ModalButtonProps> = ({
+  children,
+  onPress,
+  style,
+  textStyle,
+  disabled = false,
+  isLoading = false,
+}) => {
+  const isButtonDisabled = disabled || isLoading;
 
-export const useProfileStore = create<ProfileState>((set) => ({
-  profile: {
-    certificates: [],
-    // ... initial profile values
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={isButtonDisabled}
+      style={[
+        modalButtonStyles.base,
+        style,
+        isButtonDisabled && modalButtonStyles.disabled,
+      ]}
+      activeOpacity={0.7}
+    >
+      {isLoading ? (
+        <ActivityIndicator color="white" /> // Assuming white spinner on dark buttons
+      ) : (
+        <Text style={[modalButtonStyles.textBase, textStyle]}>{children}</Text>
+      )}
+    </TouchableOpacity>
+  );
+};
+
+const modalButtonStyles = StyleSheet.create({
+  base: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 999, // Fully rounded
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 48,
+    // Flex or fixed width will be applied by the specific style
   },
-  addCertificate: (newCertData) =>
-    set((state) => ({
-      profile: {
-        ...state.profile,
-        certificates: [...state.profile.certificates, { id: uuidv4(), ...newCertData }],
-      },
-    })),
-  removeCertificate: (id) =>
-    set((state) => ({
-      profile: {
-        ...state.profile,
-        certificates: state.profile.certificates.filter((cert) => cert.id !== id),
-      },
-    })),
-  setCurrentStep: (step) => {
-    // ... update step logic
+  textBase: {
+    fontWeight: "bold",
+    textAlign: "center",
+    fontSize: 16,
   },
-  completeStep: (step) => {
-    // ... complete step logic
+  disabled: {
+    opacity: 0.5,
   },
-}));
-*/
+});
+// --- End Inline Custom Modal Button Component ---
 
 const CertificatesScreen = () => {
   const navigation = useNavigation(); // Not directly used in JSX, but useful for generic navigation
@@ -91,10 +104,11 @@ const CertificatesScreen = () => {
   const [formData, setFormData] = useState({
     title: "",
     organization: "",
-    issueDate: "",
+    issueDate: "", // Format: MM/YYYY
     imageUrl: "", // Base64 string for image display
     certificateUrl: "",
   });
+  const [isUploadingImage, setIsUploadingImage] = useState(false); // State for image upload loader
 
   // State to determine if "Save" button in dialog is enabled
   const isDialogFormValid =
@@ -118,30 +132,76 @@ const CertificatesScreen = () => {
       return;
     }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      base64: true,
-      allowsEditing: true, // Allows user to crop/edit
-      quality: 0.7, // Compress image quality
-      mediaTypes: ImagePicker.MediaTypeOptions.Images, // Only allow images
-    });
+    setIsUploadingImage(true); // Start image upload loader
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        base64: true, // Request base64 data directly
+        allowsEditing: true, // Allows user to crop/edit
+        quality: 0.7, // Compress image quality
+        mediaTypes: ImagePicker.MediaTypeOptions.Images, // Only allow images
+        selectionLimit: 1, // Limit to a single image
+      });
 
-    if (!result.canceled) {
-      const selectedAsset =
-        result.assets && result.assets.length > 0 ? result.assets[0] : null;
+      if (!result.canceled) {
+        const selectedAsset =
+          result.assets && result.assets.length > 0 ? result.assets[0] : null;
 
-      if (selectedAsset && selectedAsset.base64) {
-        setFormData({
-          ...formData,
-          imageUrl: `data:image/jpeg;base64,${selectedAsset.base64}`, // Correct base64 URI
-        });
-      } else {
-        Alert.alert("Image Error", "Failed to get image data.");
+        if (selectedAsset && selectedAsset.base64) {
+          // Determine MIME type (Expo provides it)
+          const mimeType = selectedAsset.mimeType || "image/jpeg"; // Fallback
+
+          setFormData({
+            ...formData,
+            imageUrl: `data:${mimeType};base64,${selectedAsset.base64}`, // Correct base64 Data URI
+          });
+          // No need for separate convertToBase64 if base64 is requested directly
+        } else {
+          Alert.alert("Image Error", "Failed to get image data.");
+        }
+      }
+    } catch (error) {
+      console.error("Image selection/processing error:", error);
+      Alert.alert("Error", "Failed to select or process image.");
+    } finally {
+      setIsUploadingImage(false); // Stop image upload loader
+    }
+  };
+
+  // Function to handle "Issue Date" input format (MM/YYYY)
+  const handleDateChange = (text: string) => {
+    // Remove non-digit characters
+    let cleanedText = text.replace(/[^0-9]/g, "");
+
+    // Add slash automatically
+    if (cleanedText.length > 2 && cleanedText.indexOf("/") === -1) {
+      cleanedText =
+        cleanedText.substring(0, 2) + "/" + cleanedText.substring(2);
+    }
+
+    // Limit length to MM/YYYY format (7 characters)
+    if (cleanedText.length > 7) {
+      cleanedText = cleanedText.substring(0, 7);
+    }
+
+    // Optional: Basic validation (MM must be 01-12)
+    const parts = cleanedText.split("/");
+    if (parts.length > 1 && parts[0].length === 2) {
+      const month = parseInt(parts[0], 10);
+      if (month < 1 || month > 12) {
+        // Invalid month, maybe show a hint or prevent input?
+        // For now, just allow typing, validation can be done on save.
       }
     }
+
+    setFormData({
+      ...formData,
+      issueDate: cleanedText,
+    });
   };
 
   const handleAddCertificate = () => {
     if (!isDialogFormValid) {
+      // This check is also on the button disabled state, but good to double-check
       Alert.alert(
         "Required Fields",
         "Please provide a certificate title and issuing organization."
@@ -149,7 +209,18 @@ const CertificatesScreen = () => {
       return;
     }
 
+    // Basic date format validation (optional, but good)
+    const datePattern = /^(0[1-9]|1[0-2])\/(\d{4})$/; // MM/YYYY format
+    if (formData.issueDate && !datePattern.test(formData.issueDate)) {
+      Alert.alert(
+        "Invalid Date",
+        "Please enter the issue date in MM/YYYY format."
+      );
+      return;
+    }
+
     addCertificate(formData); // `id` should be generated in the store's addCertificate
+    // Reset form state
     setFormData({
       title: "",
       organization: "",
@@ -180,18 +251,18 @@ const CertificatesScreen = () => {
 
   const handleContinue = () => {
     completeStep(4); // Mark step 4 as complete
-    setCurrentStep(5); // Move to step 5
+    setCurrentStep(5); // Move to step 5 (This step numbering seems off from the image upload step, double-check your flow)
     router.push("/(registration)/work-experience"); // Navigate to the next registration step
   };
 
   const handleBack = () => {
     // This custom onBack handler could navigate to the previous registration step
-    router.push("/(registration)/basic-information"); // Example: go back to basic info
+    router.back(); // Use router.back() for more dynamic navigation
   };
 
   const handleSkip = () => {
-    completeStep(4);
-    setCurrentStep(5);
+    completeStep(4); // Mark step 4 as complete even if skipped
+    setCurrentStep(5); // Move to step 5
     router.push("/(registration)/work-experience");
   };
 
@@ -211,7 +282,9 @@ const CertificatesScreen = () => {
           </Text>
           <Text style={styles.certificateOrgDate} numberOfLines={1}>
             {item.organization}
-            {item.issueDate ? ` • ${formatDate(item.issueDate)}` : ""}
+            {/* Use formatDate utility if it handles MM/YYYY */}
+            {item.issueDate ? ` • ${item.issueDate}` : ""}{" "}
+            {/* Display as is or use formatDate if needed */}
           </Text>
         </View>
       </View>
@@ -226,6 +299,7 @@ const CertificatesScreen = () => {
 
   return (
     <View style={appStyles.fullScreenContainer}>
+      {/* Assuming PageHeader handles step display logic */}
       <PageHeader currentStep={5} totalSteps={6} onBack={handleBack} />
 
       <ScrollView
@@ -244,13 +318,14 @@ const CertificatesScreen = () => {
           <Text style={styles.addCertificateButtonText}>+ Add Certificate</Text>
         </TouchableOpacity>
 
+        {/* List of added certificates */}
         {profile.certificates && profile.certificates.length > 0 && (
           <FlatList
             data={profile.certificates}
-            keyExtractor={(item) => item.id.toString()} // Ensure 'id' is a string or number
+            keyExtractor={(item) => item.id.toString()} // Use id as key
             renderItem={renderCertificateItem}
             contentContainerStyle={styles.certificatesList}
-            scrollEnabled={false} // FlatList inside ScrollView generally shouldn't scroll
+            scrollEnabled={false} // FlatList inside ScrollView should generally not scroll
           />
         )}
 
@@ -275,67 +350,98 @@ const CertificatesScreen = () => {
       {isDialogOpen && (
         <View style={styles.dialogOverlay}>
           <View style={styles.dialogContainer}>
-            <Text style={styles.dialogTitle}>Add certificate</Text>
-
-            <TextInput
-              placeholder="Certificate Title *"
-              value={formData.title}
-              onChangeText={(text) => handleChange("title", text)}
-              style={styles.dialogInput}
-            />
-
-            <TextInput
-              placeholder="Issuing Organization *"
-              value={formData.organization}
-              onChangeText={(text) => handleChange("organization", text)}
-              style={styles.dialogInput}
-            />
-
-            <TextInput
-              placeholder="Issue Date (e.g., 01/2023)"
-              value={formData.issueDate}
-              onChangeText={(text) => handleChange("issueDate", text)}
-              style={styles.dialogInput}
-              keyboardType="numbers-and-punctuation"
-            />
-
-            <TouchableOpacity
-              onPress={handleImageChange}
-              style={styles.uploadImageButton}
-            >
-              <Text style={styles.uploadImageButtonText}>
-                Upload Certificate Image
-              </Text>
-            </TouchableOpacity>
-
-            {formData.imageUrl ? (
-              <Image
-                source={{ uri: formData.imageUrl }}
-                style={styles.uploadedImagePreview}
+            {/* Use ScrollView inside dialog for content if it might overflow */}
+            <ScrollView contentContainerStyle={styles.dialogContent}>
+              <Text style={styles.dialogTitle}>Add certificate</Text>
+              {/* Certificate Title Input */}
+              <Text style={styles.inputLabel}>Certificate Title</Text>{" "}
+              {/* Label */}
+              <TextInput
+                placeholder="Eg., AWS Certified Developer" // Placeholder
+                value={formData.title}
+                onChangeText={(text) => handleChange("title", text)}
+                style={styles.dialogInput}
+                placeholderTextColor="#9CA3AF" // Match image placeholder color
               />
-            ) : null}
-
-            <TextInput
-              placeholder="Certificate URL (Optional)"
-              value={formData.certificateUrl}
-              onChangeText={(text) => handleChange("certificateUrl", text)}
-              style={styles.dialogInput}
-              keyboardType="url"
-            />
-
-            <View style={styles.dialogButtons}>
-              <Button
-                title="Cancel"
-                onPress={() => setIsDialogOpen(false)}
-                color="grey"
+              {/* Issuing Organization Input */}
+              <Text style={styles.inputLabel}>Issuing Organization</Text>{" "}
+              {/* Label */}
+              <TextInput
+                placeholder="Eg., Amazon Web Services" // Placeholder
+                value={formData.organization}
+                onChangeText={(text) => handleChange("organization", text)}
+                style={styles.dialogInput}
+                placeholderTextColor="#9CA3AF" // Match image placeholder color
               />
-              <View style={{ width: 8 }} />
-              <Button
-                title="Save"
-                onPress={handleAddCertificate}
-                disabled={!isDialogFormValid}
+              {/* Issue Date Input */}
+              <Text style={styles.inputLabel}>Issuing Date</Text> {/* Label */}
+              <TextInput
+                placeholder="MM/YYYY" // Placeholder from image
+                value={formData.issueDate}
+                onChangeText={handleDateChange} // Use the custom date handler
+                style={styles.dialogInput}
+                keyboardType="numbers-and-punctuation" // Allows numbers and slash
+                maxLength={7} // Limit to MM/YYYY
+                placeholderTextColor="#9CA3AF" // Match image placeholder color
               />
-            </View>
+              {/* Upload Image Button */}
+              <Text style={styles.inputLabel}>Upload Image</Text> {/* Label */}
+              <TouchableOpacity
+                onPress={handleImageChange}
+                style={styles.uploadImageButton} // Styled button
+                disabled={isUploadingImage} // Disable while uploading
+              >
+                {isUploadingImage ? (
+                  <ActivityIndicator color="#6B7280" /> // Spinner matching text color
+                ) : (
+                  <Text style={styles.uploadImageButtonText}>
+                    + upload from device
+                  </Text> // Styled text from image
+                )}
+              </TouchableOpacity>
+              {/* Image Preview */}
+              {formData.imageUrl ? (
+                <Image
+                  source={{ uri: formData.imageUrl }}
+                  style={styles.uploadedImagePreview}
+                />
+              ) : null}
+              {/* Certificate URL Input */}
+              <Text style={styles.inputLabel}>Certificate url</Text>{" "}
+              {/* Label */}
+              <TextInput
+                placeholder="www.url.com" // Placeholder
+                value={formData.certificateUrl}
+                onChangeText={(text) => handleChange("certificateUrl", text)}
+                style={styles.dialogInput}
+                keyboardType="url" // Appropriate keyboard
+                autoCapitalize="none" // URLs are case-insensitive
+                placeholderTextColor="#9CA3AF" // Match image placeholder color
+              />
+              {/* Hint text below URL input */}
+              <Text style={styles.hintText}>to cross verify certificate</Text>
+              {/* Dialog Buttons (Cancel and Save) */}
+              <View style={styles.dialogButtons}>
+                {/* Cancel Button */}
+                <ModalButton
+                  onPress={() => setIsDialogOpen(false)}
+                  style={styles.cancelButton}
+                  textStyle={styles.cancelButtonText}
+                >
+                  Cancel
+                </ModalButton>
+                {/* Save Button */}
+                <ModalButton
+                  onPress={handleAddCertificate}
+                  style={styles.saveButton}
+                  textStyle={styles.saveButtonText}
+                  disabled={!isDialogFormValid} // Disabled state based on required fields
+                  // isLoading state could be added here if saving certificate takes time
+                >
+                  Save
+                </ModalButton>
+              </View>
+            </ScrollView>
           </View>
         </View>
       )}
@@ -354,66 +460,55 @@ const appStyles = StyleSheet.create({
 
 const styles = StyleSheet.create({
   contentContainer: {
+    flexGrow: 1, // Allows content to expand
     paddingHorizontal: 20,
     backgroundColor: "white",
     paddingBottom: 40, // Ensure space for action button at bottom
   },
-  // Reusing styles from BasicInformation for consistency with QuestionHeader
-  pageTitle: {
-    fontSize: 28,
-    fontWeight: "bold",
-    marginBottom: 8,
-    marginTop: 24, // Space below header
-  },
-  pageSubtitle: {
-    fontSize: 16,
-    color: "#6b7280", // gray-500
-    marginBottom: 24, // Space before first input
-  },
   addCertificateButton: {
-    marginVertical: 12,
-    // Removed width: "80%" and marginHorizontal: "auto" as they don't work for alignSelf
-    alignSelf: "center", // Center the button horizontally
-    width: "90%", // Adjust width as needed
-    borderColor: "#ccc",
-    borderWidth: 2,
-    borderStyle: "dashed",
-    borderRadius: 24,
-    padding: 30,
+    marginVertical: 20, // Adjusted vertical margin
+    alignSelf: "center",
+    width: "90%",
+    borderColor: "#D1D5DB", // Match input border color
+    borderWidth: 1, // Solid border, image shows dashed, but dashed might be hard to match exactly
+    borderStyle: "dashed", // Keeping dashed as in image
+    borderRadius: 8, // Rounded corners from image
+    padding: 20, // Adjusted padding
     alignItems: "center",
+    backgroundColor: "#F9FAFB", // Light background from inputs
   },
   addCertificateButtonText: {
-    color: "#4B5563", // Gray color
+    color: "#6B7280", // Gray color
     fontSize: 16,
-    // fontFamily: "Montserrat",
     fontWeight: "500",
   },
   certificatesList: {
-    paddingBottom: 20, // Add padding below the list itself
+    paddingBottom: 20,
   },
   certificateItem: {
     marginBottom: 12,
     padding: 10,
-    backgroundColor: "#F8F8F8", // Light gray background
+    backgroundColor: "#F8F8F8",
     borderRadius: 8,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     borderWidth: 1,
-    borderColor: "#E0E0E0", // Subtle border
+    borderColor: "#E0E0E0",
   },
   certificateDetails: {
     flexDirection: "row",
     alignItems: "center",
-    flexShrink: 1, // Allow text to shrink
-    marginRight: 10, // Space before remove button
+    flexShrink: 1,
+    marginRight: 10,
   },
   certificateImage: {
     width: 50,
     height: 50,
-    borderRadius: 25,
+    borderRadius: 4, // Slightly less rounded than circle
     marginRight: 10,
-    backgroundColor: "#DCDCDC", // Placeholder background for image
+    backgroundColor: "#DCDCDC",
+    resizeMode: "cover", // Ensure image covers the area
   },
   certificateTextContainer: {
     flexShrink: 1,
@@ -431,7 +526,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 5,
-    backgroundColor: "#FF6347", // Tomato red for clear "remove"
+    backgroundColor: "#FF6347",
   },
   removeButtonText: {
     color: "white",
@@ -439,14 +534,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   skipButton: {
-    // Custom style for the skip button, making it distinct from "Continue"
-    backgroundColor: "#A9A9A9", // Darker gray
-    borderColor: "#696969", // Even darker gray border
-    marginTop: 40,
+    backgroundColor: "#E5E7EB", // Light gray from image
+    borderColor: "#D1D5DB", // Border color
+    marginTop: 30, // Space above Skip button
+    // textStyle should be black for this button
   },
   skipButtonText: {
-    // If you want different text style for skip
-    color: "white",
+    color: "black", // Black text for skip button
   },
 
   // Dialog (Modal) Styles
@@ -456,87 +550,121 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.6)", // Darker overlay
+    backgroundColor: "rgba(0,0,0,0.6)",
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
+    paddingHorizontal: 20, // Padding on the sides of the overlay
     zIndex: 1000,
   },
   dialogContainer: {
     backgroundColor: "white",
-    padding: 20,
-    borderRadius: 12, // More rounded corners
-    width: "95%",
-    maxHeight: "85%", // Increased max height
-    // Optional: Add shadow to dialog
+    padding: 20, // Inner padding inside the dialog container
+    borderRadius: 12,
+    width: "100%", // Take full width minus overlay padding
+    // maxHeight: "85%", // Allow ScrollView inside to manage height
+    // Added a fixed height or calculated height might be needed depending on screen size
+    // Let's add a maxHeight to prevent it from taking up the whole screen
+    maxHeight: "80%", // Adjust as needed
     ...Platform.select({
       ios: {
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.25,
-        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 2 }, // Reduced shadow
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
       },
       android: {
-        elevation: 10,
+        elevation: 5, // Reduced elevation
       },
     }),
   },
+  dialogContent: {
+    // Padding inside the ScrollView if needed
+    paddingBottom: 20, // Space at the bottom of scrollable content
+  },
   dialogTitle: {
-    fontSize: 22, // Slightly larger title
+    fontSize: 20, // Adjusted font size to match image
     fontWeight: "bold",
-    marginBottom: 20, // More space
-    textAlign: "center", // Center dialog title
+    marginBottom: 15, // Adjusted space
+    textAlign: "center",
+  },
+  inputLabel: {
+    fontSize: 14, // Smaller font size for labels
+    fontWeight: "500", // Medium weight
+    color: "#4B5563", // Gray-600 color
+    marginBottom: 8, // Space below label
+    marginTop: 5, // Space above label from previous element
   },
   dialogInput: {
     borderWidth: 1,
-    borderColor: "#D1D5DB", // Lighter border
-    borderRadius: 8, // Slightly rounded input
-    paddingHorizontal: 12,
-    paddingVertical: Platform.OS === "ios" ? 12 : 10,
-    marginBottom: 15,
+    borderColor: "#D1D5DB", // Border color
+    borderRadius: 8, // Rounded input corners
+    paddingHorizontal: 12, // Inner horizontal padding
+    paddingVertical: Platform.OS === "ios" ? 12 : 10, // Inner vertical padding
     fontSize: 16,
+    backgroundColor: "#F9FAFB", // Light gray background
+    color: "#1F2937", // Dark text color
+    marginBottom: 15, // Space below input field
   },
   uploadImageButton: {
-    marginVertical: 10,
-    paddingVertical: 10,
+    marginVertical: 10, // Space around
+    paddingVertical: 12, // Inner vertical padding
     alignItems: "center",
-    backgroundColor: "#EBF5FF", // Light blue background
-    borderRadius: 8,
+    justifyContent: "center",
+    backgroundColor: "white", // White background as in image
+    borderRadius: 8, // Rounded corners
     borderWidth: 1,
-    borderColor: "#D1D5DB", // Matches input border
+    borderStyle: "dashed", // Dashed border
+    borderColor: "#D1D5DB", // Border color
   },
   uploadImageButtonText: {
-    color: "#007AFF", // Standard blue
+    color: "#6B7280", // Gray text color from image
     fontWeight: "600",
+    fontSize: 16, // Match input font size
   },
   uploadedImagePreview: {
     width: 100,
     height: 100,
-    borderRadius: 8,
+    borderRadius: 8, // Match input/button border radius
     marginVertical: 15,
     alignSelf: "center",
-    resizeMode: "cover", // Cover the area
+    resizeMode: "cover",
+  },
+  hintText: {
+    fontSize: 11, // Smaller font for hint
+    color: "#6B7280", // Gray text
+    textAlign: "right", // Align to the right as in image
+    marginTop: -12, // Pull up slightly closer to the input field
+    marginBottom: 15, // Space before buttons
+    paddingRight: 5, // Small padding for alignment
   },
   dialogButtons: {
     flexDirection: "row",
-    justifyContent: "flex-end",
-    marginTop: 20,
+    justifyContent: "flex-end", // Align buttons to the right
+    marginTop: 10, // Space above buttons
+    // Use margin or gap between buttons below
   },
-  // Old styles that are not used or superseded:
-  inputGroup: {},
-  label: {
-    fontSize: 14,
-    color: "#4B5563",
-    marginBottom: 6,
-    // fontFamily: "Montserrat", // Removed here as QuestionHeader uses it, not this specific input
+  // Custom styles for the specific modal buttons
+  cancelButton: {
+    // Override base styles
+    width: 100, // Example fixed width based on image appearance
+    marginRight: 8, // Space between buttons
+    backgroundColor: "#E5E7EB", // Light gray background from image (matches skip button)
+    borderColor: "#D1D5DB", // Matches border color
+    borderRadius: 999, // Keep fully rounded
   },
-  input: {
-    // Defined specific input styles above
+  cancelButtonText: {
+    color: "black", // Black text
+    fontSize: 16, // Match size
   },
-  help: {},
-  socialContainer: {},
-  socialLabel: {},
-  iconRow: {},
-  iconCircle: {},
-  iconCircleActive: {},
+  saveButton: {
+    // Override base styles
+    width: 100, // Example fixed width
+    backgroundColor: "black", // Black background from image
+    borderColor: "black", // Black border
+    borderRadius: 999, // Keep fully rounded
+  },
+  saveButtonText: {
+    color: "white", // White text
+    fontSize: 16, // Match size
+  },
 });

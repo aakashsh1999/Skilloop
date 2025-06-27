@@ -51,7 +51,7 @@ const ActionButton: React.FC<ActionButtonProps> = ({
 
 const styles = StyleSheet.create({
   buttonContainer: {
-    backgroundColor: "#D29F6B", // Light orange/brown color from image
+    backgroundColor: "#333333", // Light orange/brown color from image
     borderRadius: 20, // Very large border radius to create a pill shape
     borderWidth: 1,
     width: 250,

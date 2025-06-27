@@ -141,8 +141,21 @@ const ProfileImages: React.FC = () => {
 
   const router = useRouter(); // Expo Router hook for navigation
   const handleContinue = () => {
-    // You might want to add validation here to ensure at least one image is uploaded
-    // before allowing navigation.
+    console.log(profile.profileImages, "working");
+    const hasFaceImage = profile.profileImages.some(
+      (img) => img.type === "face"
+    );
+
+    if (!hasFaceImage) {
+      toast({
+        title: "Upload Required",
+        description:
+          "Please upload a clear headshot (your face) before continuing.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     completeStep(7); // Mark step 7 as complete in your store
     router.push("/(registration)/misc"); // Navigate to the next screen
   };
@@ -158,7 +171,7 @@ const ProfileImages: React.FC = () => {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <PageHeader currentStep={6} totalSteps={6} onBack={handleBack} />
+      <PageHeader currentStep={3} totalSteps={6} onBack={handleBack} />
       <QuestionHeader
         title="Profile Images"
         subtitle="Upload three professional photos that represent you best"

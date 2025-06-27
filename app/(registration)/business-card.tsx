@@ -13,14 +13,15 @@ import {
   TextInput,
   View,
   TouchableOpacity,
+  Image,
 } from "react-native";
 
 const SOCIAL_PLATFORMS = [
-  { id: "linkedin", name: "LinkedIn", icon: "📊" },
-  { id: "figma", name: "Figma", icon: "🎨" },
-  { id: "upwork", name: "Upwork", icon: "💼" },
-  { id: "dribbble", name: "Dribbble", icon: "🏀" },
-  { id: "instagram", name: "Instagram", icon: "📸" },
+  { id: "linkedin", name: "LinkedIn", icon: "linked.png" },
+  { id: "figma", name: "Figma", icon: "figma.png" },
+  { id: "upwork", name: "Upwork", icon: "fiver.png" },
+  { id: "dribbble", name: "Dribbble", icon: "dribbble.png" },
+  { id: "instagram", name: "Instagram", icon: "instagram.png" },
 ];
 
 const BusinessCard: React.FC = () => {
@@ -180,7 +181,51 @@ const BusinessCard: React.FC = () => {
               ]}
               onPress={() => toggleSocialInput(platform.id)}
             >
-              <Text>{platform.icon}</Text>
+              {platform.id === "linkedin" && (
+                <Image
+                  source={require(`../../assets/linked.png`)}
+                  style={{
+                    width: 40,
+                    height: 40,
+                  }}
+                />
+              )}
+              {platform.id === "figma" && (
+                <Image
+                  source={require(`../../assets/figma.png`)}
+                  style={{
+                    width: 40,
+                    height: 40,
+                  }}
+                />
+              )}
+              {platform.id === "upwork" && (
+                <Image
+                  source={require(`../../assets/fiver.png`)}
+                  style={{
+                    width: 40,
+                    height: 40,
+                  }}
+                />
+              )}
+              {platform.id === "dribbble" && (
+                <Image
+                  source={require(`../../assets/dribble.png`)}
+                  style={{
+                    width: 40,
+                    height: 40,
+                  }}
+                />
+              )}
+              {platform.id === "instagram" && (
+                <Image
+                  source={require(`../../assets/instagram.png`)}
+                  style={{
+                    width: 40,
+                    height: 40,
+                  }}
+                />
+              )}
             </TouchableOpacity>
           ))}
         </View>
