@@ -5,6 +5,7 @@ import React, {
   useImperativeHandle,
   useState,
   ComponentProps,
+  use,
 } from "react";
 import {
   Dimensions,
@@ -98,6 +99,7 @@ const UserCard = React.forwardRef<any, UserCardProps>(
     const scale = useRef(new Animated.Value(1)).current;
     // REMOVE isScrolling state as PanResponder is removed
     // const [isScrolling, setIsScrolling] = useState(false);
+    console.log(userData, "dd");
 
     // Reset position and scale when userData changes (a new card is shown)
     useEffect(() => {
@@ -287,18 +289,13 @@ const UserCard = React.forwardRef<any, UserCardProps>(
             {/* Profile Name */}
             <Text style={styles.userName}>
               {/* Use name from basicInfo if available, fallback to userData.user.name */}
-              {displayData?.basicInfo?.fullName ||
-                displayData?.name ||
-                "No Name"}
+              {userData.name || userData.name || "No Name"}
             </Text>
             {/* Featured Image 1 (Face/Profile Image) */}
             {/* Assuming profileImages is an array in userData.user */}
             <Image
               source={{
-                uri:
-                  displayData?.profileImages?.find(
-                    (img: any) => img.type === "face"
-                  )?.url || UNIVERSAL_IMAGE_URL,
+                uri: userData?.profile_image,
               }}
               style={styles.featuredImage}
               resizeMode="cover"
@@ -313,7 +310,7 @@ const UserCard = React.forwardRef<any, UserCardProps>(
                   style={{ marginRight: 4 }}
                 />
                 <Text style={styles.engagementText}>
-                  {displayData?.basicInfo?.age || displayData?.age || "N/A"} yrs
+                  {userData?.age || displayData?.age || "N/A"} yrs
                 </Text>
               </View>
               <View style={styles.engagementButton}>
@@ -325,12 +322,12 @@ const UserCard = React.forwardRef<any, UserCardProps>(
                 />
                 <Text style={styles.engagementText}>
                   {/* Capitalize first letter of gender */}
-                  {displayData?.basicInfo?.gender
-                    ? displayData.basicInfo.gender.charAt(0).toUpperCase() +
-                      displayData.basicInfo.gender.slice(1)
-                    : displayData?.gender
-                    ? displayData.gender.charAt(0).toUpperCase() +
-                      displayData.gender.slice(1)
+                  {userData?.gender
+                    ? userData.gender.charAt(0).toUpperCase() +
+                      userData.gender.slice(1)
+                    : userData?.gender
+                    ? userData.gender.charAt(0).toUpperCase() +
+                      userData.gender.slice(1)
                     : "N/A"}
                 </Text>
               </View>
@@ -343,9 +340,7 @@ const UserCard = React.forwardRef<any, UserCardProps>(
                 />
                 <Text style={styles.engagementText}>
                   {/* Location name from basicInfo or location field */}
-                  {displayData?.basicInfo?.location ||
-                    displayData?.location ||
-                    "N/A"}
+                  {userData?.location || userData?.location || "N/A"}
                 </Text>
               </View>
             </View>
@@ -353,7 +348,7 @@ const UserCard = React.forwardRef<any, UserCardProps>(
             <View style={styles.summaryCard}>
               <View style={styles.summaryContent}>
                 <Text style={styles.summaryJobTitle}>
-                  {businessCard?.role || "Role not specified"}
+                  {userData?.business_card?.["role"] || "Role not specified"}
                 </Text>
                 <Text style={styles.summaryEmploymentStatus}>
                   {businessCard?.company || "Company not specified"}
@@ -373,8 +368,8 @@ const UserCard = React.forwardRef<any, UserCardProps>(
                 {/* Social Icons & Briefcase */}
                 <View style={styles.socialAndBriefcaseContainer}>
                   <View style={styles.summarySocialIcons}>
-                    {socialLinks.length > 0 ? ( // Only map if links exist
-                      socialLinks.map(
+                    {userData?.social_links?.length > 0 ? ( // Only map if links exist
+                      userData?.social_links?.map(
                         (
                           link: {
                             id: string; // Assuming social links have an ID
@@ -429,28 +424,22 @@ const UserCard = React.forwardRef<any, UserCardProps>(
             {/* Assuming profileImages has a 'skill' type image */}
             <Image
               source={{
-                uri:
-                  displayData?.profileImages?.find(
-                    (img: any) => img.type === "skill"
-                  )?.url || UNIVERSAL_IMAGE_URL,
+                uri: userData?.face,
               }}
               style={styles.featuredImage}
               resizeMode="cover"
             />
             {/* Description (Short Bio) */}
             <Text style={styles.descriptionText}>
-              {displayData?.shortBio ||
-                displayData?.short_bio ||
-                "No bio available."}
+              {userData?.shortBio || userData?.short_bio || "No bio available."}
             </Text>
             {/* Featured Image 3 (Anything but professional image) */}
             {/* Assuming profileImages has a 'professional' type image */}
             <Image
               source={{
                 uri:
-                  displayData?.profileImages?.find(
-                    (img: any) => img.type === "professional"
-                  )?.url || UNIVERSAL_IMAGE_URL,
+                  userData?.anything_but_professional ||
+                  userData?.anything_but_professional,
               }}
               style={styles.featuredImage}
               resizeMode="cover"
@@ -462,9 +451,9 @@ const UserCard = React.forwardRef<any, UserCardProps>(
                 {workExperience.length > 0 ? `+${workExperience.length}` : "0"}
               </Text>
             </View>
-            {workExperience.length > 0 ? ( // Only render FlatList if data exists
+            {userData?.work_experience?.length > 0 ? ( // Only render FlatList if data exists
               <FlatList
-                data={workExperience}
+                data={userData.work_experience}
                 renderItem={({ item }) =>
                   renderLogoItem({ item, type: "experience" })
                 }
@@ -486,11 +475,11 @@ const UserCard = React.forwardRef<any, UserCardProps>(
                 {certificates.length > 0 ? `+${certificates.length}` : "0"}
               </Text>
             </View>
-            {certificates.length > 0 ? ( // Only render FlatList if data exists
+            {userData?.certificates?.length > 0 ? ( // Only render FlatList if data exists
               <FlatList
-                data={certificates}
-                renderItem={({ item }) =>
-                  renderLogoItem({ item, type: "certification" })
+                data={userData.certificates}
+                renderItem={
+                  ({ item }) => renderLogoItem({ item, type: "certification" }) // Use the generic logo item renderer
                 }
                 keyExtractor={(item, index) => `cert-${item.id || index}`} // Use id if available
                 numColumns={2}
@@ -555,11 +544,11 @@ const styles = StyleSheet.create({
     justifyContent: "center", // Center content (ScrollView) within animated view
     alignItems: "center", // Center content (ScrollView) within animated view
     borderRadius: 15, // Rounded corners for card feel
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5, // Android shadow
+    // shadowColor: "#000",
+    // shadowOffset: { width: 0, height: 3 },
+    // shadowOpacity: 0.2,
+    // shadowRadius: 8,
+    // elevation: 5, // Android shadow
   },
   container: {
     flex: 1, // ScrollView takes full space of animatedCard
@@ -583,23 +572,24 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#f0f0f0",
-    borderRadius: 15,
+    borderRadius: 20,
     // Removed marginHorizontal, using alignSelf
   },
   placeholderText: {
     fontSize: 18,
+    fontFamily: "Montserrat",
     color: "#666",
   },
   userName: {
     color: "black",
     fontSize: 34,
-    fontWeight: "bold",
+    fontFamily: "MontserratBold",
     marginBottom: 8,
   },
   featuredImage: {
     width: "100%",
     aspectRatio: 1 / 1, // Keep aspect ratio
-    borderRadius: 15,
+    borderRadius: 50,
     borderWidth: 1,
     borderColor: "#eee",
     marginBottom: 20,
@@ -625,12 +615,13 @@ const styles = StyleSheet.create({
   engagementText: {
     fontSize: 15,
     color: "black",
+    fontFamily: "Montserrat",
     fontWeight: "500",
   },
   summaryCard: {
     backgroundColor: "#fff",
-    borderRadius: 15,
-    paddingHorizontal: 20, // Inner horizontal padding
+    borderRadius: 40,
+    paddingHorizontal: 30, // Inner horizontal padding
     paddingVertical: 20, // Inner vertical padding
     borderWidth: 1,
     borderColor: "#eee",
@@ -646,16 +637,18 @@ const styles = StyleSheet.create({
   },
   summaryJobTitle: {
     fontSize: 20,
-    fontWeight: "bold",
+    fontFamily: "MontserratBold",
     marginBottom: 4,
   },
   summaryEmploymentStatus: {
     fontSize: 16,
     color: "#555",
+    fontFamily: "Montserrat",
     marginBottom: 8,
   },
   summaryWebsiteLink: {
     fontSize: 16,
+    fontFamily: "Montserrat",
     color: "#007AFF",
     // marginBottom: 12, // Margin handled by parent view spacing
     textDecorationLine: "underline", // Add underline for link clarity
@@ -688,9 +681,10 @@ const styles = StyleSheet.create({
     flexShrink: 0, // Prevent shrinking
   },
   descriptionText: {
-    fontSize: 16,
-    marginVertical: 10, // Space above and below
+    fontSize: 24,
+    marginVertical: 12, // Space above and below
     color: "#333",
+    fontFamily: "MontserratBold",
     lineHeight: 24,
     // marginBottom: 20, // Redundant with marginVertical
   },
@@ -704,7 +698,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: "bold",
+    fontFamily: "MontserratBold",
   },
   sectionCount: {
     fontSize: 16,
@@ -721,6 +715,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#666",
     textAlign: "center",
+    fontFamily: "Montserrat",
     marginTop: 5,
     marginBottom: 15, // Space below the message
   },

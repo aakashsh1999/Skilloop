@@ -25,6 +25,7 @@ import { API_BASE_URL } from "@/env";
 // --- NEW IMPORTS FOR NOTIFICATIONS ---
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device"; // To check if it's a physical device
+import { Entypo, Feather, FontAwesome5, Octicons } from "@expo/vector-icons";
 
 // --- NOTIFICATION HANDLER CONFIGURATION ---
 // This configures how notifications are handled when the app is in the foreground.
@@ -313,7 +314,7 @@ const MessagesListScreen = () => {
     // Determine the message preview text
     let messagePreview = contact.lastMessage || "Start chatting!";
     if (contact.lastMessageSenderId === loggedInUserId) {
-      messagePreview = `You: ${messagePreview}`;
+      messagePreview = `${messagePreview}`;
     }
 
     return (
@@ -348,16 +349,53 @@ const MessagesListScreen = () => {
               {formatTime(contact.lastMessageTimestamp)}
             </Text>
           </View>
-          <Text style={styles.contactMessage} numberOfLines={1}>
+          <Text style={styles.contactMessage} numberOfLines={2}>
             {messagePreview}
           </Text>
         </View>
-        {/* If your ActiveChatSummary includes `unreadCount`, you can re-enable this: */}
-        {/* {contact.unreadCount > 0 && (
-          <View style={styles.unreadBadge}>
-            <Text style={styles.unreadText}>{contact.unreadCount}</Text>
-          </View>
-        )} */}
+        <View
+          style={{
+            position: "relative",
+          }}
+        >
+          {contact.isOtherUserOnline ? (
+            <View
+              style={{
+                backgroundColor: "#D0EFE0",
+                borderRadius: 20,
+                paddingHorizontal: 8,
+                paddingVertical: 5,
+                flexDirection: "row",
+                position: "absolute",
+                justifyContent: "center",
+                alignItems: "center",
+                right: -10,
+                bottom: -48,
+              }}
+            >
+              <Octicons name="dot-fill" size={20} color="#16AE65" />
+              <Text style={{ color: "#16AE65", marginLeft: 5 }}>On</Text>
+            </View>
+          ) : (
+            <View
+              style={{
+                backgroundColor: "#FDDADF",
+                borderRadius: 20,
+                paddingHorizontal: 8,
+                paddingVertical: 5,
+                flexDirection: "row",
+                position: "absolute",
+                justifyContent: "center",
+                alignItems: "center",
+                right: -10,
+                bottom: -48,
+              }}
+            >
+              <Octicons name="dot-fill" size={20} color="#f4485D" />
+              <Text style={{ color: "#f4485D", marginLeft: 5 }}>Pause</Text>
+            </View>
+          )}
+        </View>
       </TouchableOpacity>
     );
   };
@@ -378,8 +416,11 @@ const MessagesListScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Messages</Text>
-        <Text style={styles.headerIcon}>💬</Text>
+        <Text style={styles.headerTitle}>Message</Text>
+        <Image
+          source={require("../../assets/message.png")}
+          style={{ width: 35, height: 35, marginBottom: -4 }}
+        />
       </View>
 
       <FlatList
@@ -420,7 +461,7 @@ const MessagesListScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "white",
     paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0, // Account for Android status bar
   },
   centerContent: {
@@ -430,36 +471,38 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 20,
+    paddingHorizontal: 30,
+    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
     paddingVertical: 15,
     backgroundColor: "#fff",
-    borderBottomWidth: StyleSheet.hairlineWidth, // Subtle line at the bottom
-    borderBottomColor: "#e0e0e0",
+    paddingBottom: 20,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
+    fontSize: 34,
     color: "#000",
+    fontFamily: "MontserratBold",
     marginRight: 8,
   },
   headerIcon: {
     fontSize: 20,
   },
   listContentContainer: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 24,
     paddingVertical: 8,
   },
   contactItem: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#fff",
-    padding: 16,
+    paddingVertical: 20,
+    paddingHorizontal: 24,
     marginBottom: 8,
-    borderRadius: 12,
+    borderRadius: 24,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 100, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
+    borderWidth: 1,
     elevation: 2, // Android shadow
   },
   avatarContainer: {
@@ -467,9 +510,9 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 70,
+    height: 70,
+    borderRadius: 40,
     backgroundColor: "#e0e0e0", // Placeholder if image fails to load
   },
   onlineIndicator: {
@@ -493,18 +536,22 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   contactName: {
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: 24,
     color: "#000",
+    fontFamily: "MontserratBold",
   },
   contactTime: {
     fontSize: 12,
     color: "#666",
+    fontFamily: "Montserrat",
   },
   contactMessage: {
     fontSize: 14,
+    width: "80%",
+    fontFamily: "Montserrat",
     color: "#666",
   },
+
   unreadBadge: {
     backgroundColor: "#FF3B30", // Red badge
     borderRadius: 10,
@@ -513,9 +560,9 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   unreadText: {
-    color: "#fff",
+    color: "black",
     fontSize: 12,
-    fontWeight: "600",
+    fontWeight: "bold",
   },
   emptyListContainer: {
     flexGrow: 1, // Allows content to take up available space
@@ -539,8 +586,7 @@ const styles = StyleSheet.create({
     color: "#777",
     textAlign: "center",
   },
-  // bottomNav and navItem styles are not directly used in this component's new logic
-  // but keeping them for completeness if they are part of a parent layout.
+
   bottomNav: {
     flexDirection: "row",
     backgroundColor: "#fff",

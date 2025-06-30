@@ -1,4 +1,5 @@
 import { useSession } from "@/utils/AuthContext";
+import { useRouter } from "expo-router";
 import React from "react";
 import {
   View,
@@ -9,6 +10,7 @@ import {
   SafeAreaView,
   Platform,
   StatusBar,
+  Image,
 } from "react-native";
 
 // Icon component - replace with your preferred icon library
@@ -21,6 +23,7 @@ const SettingsScreen = () => {
     console.log(`Pressed: ${item}`);
     // Add your navigation logic here
   };
+  const router = useRouter();
 
   const { signOut } = useSession();
 
@@ -34,7 +37,7 @@ const SettingsScreen = () => {
           </View>
         )}
       </View>
-      <Icon name={icon} size={16} color="#999" />
+      <Icon name={icon} size={20} color="#999" />
     </TouchableOpacity>
   );
 
@@ -62,138 +65,68 @@ const SettingsScreen = () => {
       >
         {/* Header */}
         <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Image
+              source={require("../../assets/images/double-arrow.png")}
+              style={{ width: 20, height: 20 }}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
           <Text style={styles.headerTitle}>Settings</Text>
           <Text style={styles.headerIcon}>🔧</Text>
         </View>
 
         {/* Profile Section */}
-        <SettingsSection title="Profile" icon="👤">
-          <SettingsItem
-            title="Edit Profile"
-            onPress={() => handlePress("Edit Profile")}
-          />
-          <SettingsItem
-            title="Change Profile Picture"
-            onPress={() => handlePress("Change Profile Picture")}
-          />
-          <SettingsItem
-            title="Update Skills / Tags"
-            onPress={() => handlePress("Update Skills / Tags")}
-          />
-          <SettingsItem
-            title="Visibility"
-            onPress={() => handlePress("Visibility")}
-          />
-          <SettingsItem title="Logout" onPress={() => signOut()} />
-        </SettingsSection>
+        {/* <SettingsSection title="Profile" icon="👤"> */}
+        <SettingsItem
+          title="Profile Settings"
+          icon="🧑‍💼"
+          onPress={() => handlePress("Edit Profile")}
+        />
+        <SettingsItem
+          title="Account Settings"
+          icon="🧾"
+          onPress={() => handlePress("Change Profile Picture")}
+        />
+        <SettingsItem
+          title="App Preferences"
+          icon="📱"
+          onPress={() => handlePress("Update Skills / Tags")}
+        />
+        <SettingsItem
+          title="Notifications"
+          icon="🔔"
+          onPress={() => handlePress("Visibility")}
+        />
+        <SettingsItem
+          title="Privacy & Security"
+          icon="🔐"
+          onPress={() => handlePress("Update Skills / Tags")}
+        />
+        <SettingsItem
+          title="Payments & Wallet"
+          icon="💳"
+          onPress={() => handlePress("Visibility")}
+        />
 
-        {/* Account Section */}
-        <SettingsSection title="Account" icon="💼">
-          <SettingsItem
-            title="Email & Phone"
-            onPress={() => handlePress("Email & Phone")}
-          />
-          <SettingsItem
-            title="Password"
-            onPress={() => handlePress("Password")}
-          />
-          <SettingsItem
-            title="Linked Accounts"
-            onPress={() => handlePress("Linked Accounts")}
-          />
-          <SettingsItem
-            title="Delete Account"
-            onPress={() => handlePress("Delete Account")}
-          />
-        </SettingsSection>
+        <SettingsItem
+          title="Task & Project Settings"
+          icon="⚒️"
+          onPress={() => handlePress("Update Skills / Tags")}
+        />
+        <SettingsItem
+          title="Support & Legal"
+          icon="📄"
+          onPress={() => handlePress("Visibility")}
+        />
 
-        {/* App Preferences Section */}
-        <SettingsSection title="App Preferences" icon="📱">
-          <SettingsItem
-            title="Dark Mode / Light Mode"
-            onPress={() => handlePress("Dark Mode / Light Mode")}
-          />
-          <SettingsItem
-            title="Language Preference"
-            onPress={() => handlePress("Language Preference")}
-          />
-          <SettingsItem
-            title="Swipe Preferences"
-            onPress={() => handlePress("Swipe Preferences")}
-          />
-        </SettingsSection>
-
-        {/* Notifications Section */}
-        <SettingsSection title="Notifications" icon="🔔">
-          <SettingsItem
-            title="Push Notifications"
-            onPress={() => handlePress("Push Notifications")}
-          />
-          <SettingsItem
-            title="Email Notifications"
-            onPress={() => handlePress("Email Notifications")}
-          />
-        </SettingsSection>
-
-        {/* Privacy & Security Section */}
-        <SettingsSection title="Privacy & Security" icon="🛡️">
-          <SettingsItem
-            title="Blocked Users List"
-            onPress={() => handlePress("Blocked Users List")}
-          />
-          <SettingsItem
-            title="2-Factor Authentication"
-            onPress={() => handlePress("2-Factor Authentication")}
-          />
-          <SettingsItem
-            title="App Lock (Face ID / PIN)"
-            onPress={() => handlePress("App Lock (Face ID / PIN)")}
-          />
-        </SettingsSection>
-
-        {/* Support & Legal Section */}
-        <SettingsSection title="Support & Legal" icon="❓">
-          <SettingsItem
-            title="Help Center / FAQ"
-            onPress={() => handlePress("Help Center / FAQ")}
-          />
-          <SettingsItem
-            title="Contact Support"
-            onPress={() => handlePress("Contact Support")}
-          />
-          <SettingsItem
-            title="Report a Bug"
-            onPress={() => handlePress("Report a Bug")}
-          />
-          <SettingsItem
-            title="Terms & Conditions"
-            onPress={() => handlePress("Terms & Conditions")}
-          />
-          <SettingsItem
-            title="Privacy Policy"
-            onPress={() => handlePress("Privacy Policy")}
-          />
-        </SettingsSection>
-
-        {/* About Section */}
-        <SettingsSection title="About" icon="ℹ️">
-          <SettingsItem
-            title="Version"
-            onPress={() => handlePress("Version")}
-          />
-          <SettingsItem
-            title="Follow Us"
-            onPress={() => handlePress("Follow Us")}
-          />
-          <SettingsItem
-            title="Rate Us"
-            onPress={() => handlePress("Rate Us")}
-          />
-          <SettingsItem
-            title="Give Feedback"
-            onPress={() => handlePress("Give Feedback")}
-          />
-        </SettingsSection>
+        <SettingsItem
+          title="About"
+          icon="👥"
+          onPress={() => handlePress("Update Skills / Tags")}
+        />
+        <SettingsItem title="Logout" onPress={() => signOut()} icon="🚪" />
+        {/* </SettingsSection> */}
 
         {/* Bottom padding */}
         <View style={styles.bottomPadding} />
@@ -222,7 +155,9 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: "bold",
     color: "#000",
+    marginLeft: 12,
     marginRight: 8,
+    fontFamily: "MontserratBold",
   },
   headerIcon: {
     fontSize: 24,
@@ -240,6 +175,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#000",
     marginRight: 8,
+    fontFamily: "MontserratBold",
   },
   sectionIcon: {
     fontSize: 18,
@@ -277,8 +213,9 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingVertical: 16,
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#e0e0e0",
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
   },
   settingsItemLeft: {
     flexDirection: "row",
@@ -289,6 +226,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#000",
     flex: 1,
+    fontFamily: "Monsterrat",
   },
   badge: {
     backgroundColor: "#FF3B30",
@@ -300,6 +238,7 @@ const styles = StyleSheet.create({
   badgeText: {
     color: "#fff",
     fontSize: 12,
+    fontFamily: "Monsterrat",
     fontWeight: "600",
   },
   bottomPadding: {

@@ -9,7 +9,9 @@ import {
   StatusBar,
   View,
   RefreshControl,
-  ScrollView, // Make sure ScrollView is imported
+  ScrollView,
+  TouchableOpacity,
+  SafeAreaView, // Make sure ScrollView is imported
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { API_BASE_URL } from "../../env";
@@ -212,40 +214,47 @@ const ProfileScreen = () => {
   );
 
   const onRefresh = useCallback(() => {
-    setPage(1);
-    setUsers([]); // Clear users when refreshing
-    setHasMore(true); // Assume there might be more after refresh
-    fetchDiscoverableUsers(1);
+    if (users.length > 0) {
+      setPage(1);
+      setUsers([]); // Clear users when refreshing
+      setHasMore(true); // Assume there might be more after refresh
+      fetchDiscoverableUsers(1);
+    }
   }, [fetchDiscoverableUsers]);
 
   // Consolidate the rendering logic to always include the ScrollView
   return (
-    <View style={{ flex: 1, backgroundColor: "#f0f0f0" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "white" }}>
       <View style={styles.headerContainer}>
         <Image
           source={require("../../assets/images/logo.png")}
           resizeMode="contain"
           style={styles.logo}
         />
-        <Ionicons
-          name="settings-outline"
-          size={30}
-          color="black"
+        <TouchableOpacity
           style={styles.settingsIcon}
           onPress={() => router.push("/(settings)")}
-        />
+        >
+          <Image
+            source={require("../../assets/images/switches.png")}
+            style={{ width: 20, height: 20 }}
+            resizeMode="contain"
+          />
+        </TouchableOpacity>
       </View>
 
       <ScrollView
         contentContainerStyle={styles.scrollViewContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={onRefresh}
-            tintColor="#007AFF"
-            colors={["#007AFF"]}
-          />
-        }
+        // refreshControl={
+        //   fetchDiscoverableUsers.length < 0 ? (
+        //     <RefreshControl
+        //       refreshing={isRefreshing}
+        //       onRefresh={onRefresh}
+        //       tintColor="#007AFF"
+        //       colors={["#007AFF"]}
+        //     />
+        //   ) : null
+        // }
       >
         {loading && users.length === 0 && page === 1 ? (
           <View style={styles.initialLoadingContainer}>
@@ -283,23 +292,21 @@ const ProfileScreen = () => {
           onDislike={() => triggerUserCardSwipe("dislike")}
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   headerContainer: {
-    height: 60,
-    marginTop: Platform.OS === "android" ? StatusBar.currentHeight : 40,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "white",
+    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
     paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e0e0e0",
+    paddingVertical: 15,
+    marginBottom: 20,
     zIndex: 1,
-    paddingBottom: 20,
   },
   logo: {
     width: 100,

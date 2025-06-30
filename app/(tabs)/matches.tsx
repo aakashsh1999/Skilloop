@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
+// screens/LikesYouScreen.tsx
+import React, { useState, useEffect, useCallback, useRef } from "react"; // Import useRef
 import {
   View,
   Text,
@@ -9,17 +10,20 @@ import {
   RefreshControl,
   Platform,
   StatusBar,
+  Animated, // Import Animated
 } from "react-native";
 import {
   LikesAPI,
   MatchesAPI,
   LikerProfile,
   MatchedUserProfile,
-} from "@/api/index";
+} from "@/api/index"; // Assuming these are correctly imported
 import { useSession } from "@/utils/AuthContext";
 import { router } from "expo-router";
-import SummaryCard, { ProfileSummaryData } from "@/components/SummarCard";
-
+import SummaryCard, { ProfileSummaryData } from "@/components/SummarCard"; // Import SummaryCard
+import BusinessCardDisplay from "@/components/SummarCard";
+import { Image } from "react-native";
+import BusinessCardFlippable from "@/components/SummarCard";
 // 1. ENHANCE CombinedProfileData: Add `matchId`
 interface CombinedProfileData extends ProfileSummaryData {
   sortDate: string; // The date used for sorting (likedAt or matchedAt)
@@ -35,11 +39,33 @@ const LikesYouScreen = () => {
       ? session
       : session?.userId || session?.id || null;
 
+  // State to manage flip status and animation for *each* card in the list
+  const [cardStates, setCardStates] = useState<
+    { id: string; isFlipped: boolean; flipAnimation: Animated.Value }[]
+  >([]);
+
   const [combinedProfiles, setCombinedProfiles] = useState<
     CombinedProfileData[]
   >([]);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Fetch and initialize card states
+  useEffect(() => {
+    if (loggedInUserId) {
+      fetchCombinedProfiles(true);
+    }
+  }, [loggedInUserId, fetchCombinedProfiles]); // Re-fetch on user change
+
+  // Function to initialize card states when profiles are loaded
+  const initializeCardStates = (profiles: CombinedProfileData[]) => {
+    const initialStates = profiles.map((profile) => ({
+      id: profile.id,
+      isFlipped: false, // Start unflipped
+      flipAnimation: new Animated.Value(0), // Initialize animation value
+    }));
+    setCardStates(initialStates);
+  };
 
   const fetchCombinedProfiles = useCallback(
     async (isInitialOrRefresh: boolean = false) => {
@@ -55,15 +81,18 @@ const LikesYouScreen = () => {
       if (isInitialOrRefresh) {
         setIsRefreshing(true);
         setCombinedProfiles([]); // Clear data for fresh load
+        setCardStates([]); // Clear card states too
       }
       setLoading(true);
 
       try {
+        // --- Data Fetching Logic (from your previous code) ---
         const likesResponse = await LikesAPI.getReceivedLikes(
           loggedInUserId,
           1,
           100
         );
+
         const allLikes: LikerProfile[] = likesResponse.likers;
 
         const allMatches: MatchedUserProfile[] =
@@ -135,6 +164,7 @@ const LikesYouScreen = () => {
         );
 
         setCombinedProfiles(sortedCombinedProfiles);
+        initializeCardStates(sortedCombinedProfiles); // Initialize states after data is loaded
       } catch (err) {
         console.error("Error fetching combined profiles:", err);
         Alert.alert(
@@ -146,17 +176,13 @@ const LikesYouScreen = () => {
         setIsRefreshing(false);
       }
     },
-    [loggedInUserId]
+    [loggedInUserId, loading, isRefreshing] // Added dependencies
   );
 
-  useEffect(() => {
-    if (loggedInUserId) {
-      fetchCombinedProfiles(true);
-    }
-  }, [loggedInUserId, fetchCombinedProfiles]);
-
+  // Handler for approving a match (from SummaryCard)
   const handleApproveMatch = useCallback(
     async (otherUserId: string) => {
+      console.log(otherUserId, "asdf");
       if (!loggedInUserId) {
         Alert.alert("Error", "User session not found.");
         return;
@@ -194,7 +220,21 @@ const LikesYouScreen = () => {
             )
         );
 
+        // Update the specific card's state if it was approved and is now a match
         if (result.matched) {
+          setCardStates((prevStates) =>
+            prevStates.map((cardState) => {
+              if (cardState.id === otherUserId) {
+                // If a new match occurred, ensure the card is unflipped for clarity
+                return {
+                  ...cardState,
+                  isFlipped: false,
+                  flipAnimation: new Animated.Value(0),
+                };
+              }
+              return cardState;
+            })
+          );
           Alert.alert("Congratulations!", "It's a match! You can now chat.");
         } else {
           Alert.alert(
@@ -215,15 +255,15 @@ const LikesYouScreen = () => {
     [loggedInUserId]
   );
 
+  // Handler for opening chat screen
   const openChatScreen = useCallback(
     (user: CombinedProfileData) => {
-      // Change type to CombinedProfileData to access matchId
+      console.log("openChatScreen", user);
       if (!loggedInUserId) {
         Alert.alert("Error", "User session not found.");
         return;
       }
       if (!user.isMutualMatch || !user.matchId) {
-        // Check isMutualMatch and if matchId exists
         Alert.alert("Error", "Chat is only available for mutual matches.");
         return;
       }
@@ -241,6 +281,27 @@ const LikesYouScreen = () => {
     },
     [loggedInUserId]
   );
+
+  // Function to toggle the flip of a specific card by its ID
+  const toggleCardFlip = useCallback((userId: string) => {
+    setCardStates((prevStates) =>
+      prevStates.map((cardState) => {
+        if (cardState.id === userId) {
+          // Only animate and update state if canFlip is true
+          const newIsFlipped = !cardState.isFlipped;
+          Animated.timing(cardState.flipAnimation, {
+            toValue: newIsFlipped ? 1 : 0,
+            duration: 600,
+            useNativeDriver: true,
+          }).start();
+          return { ...cardState, isFlipped: newIsFlipped };
+        }
+        // Ensure other cards are reset to unflipped when one is flipped (optional, depends on desired UX)
+        // For this implementation, we'll just flip the target card and not reset others
+        return cardState;
+      })
+    );
+  }, []); // No external dependencies needed for the toggle function itself
 
   const renderFooter = () => {
     return null;
@@ -272,18 +333,37 @@ const LikesYouScreen = () => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Connections</Text>
+        <Text style={styles.headerTitle}>Matches </Text>
+        <Image
+          source={require("../../assets/matches.png")}
+          style={{ width: 35, height: 35, marginBottom: -4 }}
+        />
       </View>
       <FlatList
         data={combinedProfiles}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <SummaryCard
-            profileData={item}
-            onApprove={handleApproveMatch}
-            onChatPress={openChatScreen}
-          />
-        )}
+        // Custom renderItem to handle passing specific animation and state to BusinessCardDisplay
+        renderItem={({ item }) => {
+          // Find the specific state for this profile
+          const cardState = cardStates.find((state) => state.id === item.id);
+
+          if (!cardState) {
+            // This should ideally not happen if initializeCardStates is called correctly
+            return null;
+          }
+
+          return (
+            <BusinessCardDisplay
+              profileData={item}
+              flipAnimation={cardState.flipAnimation}
+              isFlipped={cardState.isFlipped}
+              canFlip={false} // You can set this dynamically if needed
+              onPressFlip={() => toggleCardFlip(item.id)} // Pass the userId to toggle
+              onApprove={() => handleApproveMatch(item.id)}
+              onChatPress={() => openChatScreen(item)}
+            />
+          );
+        }}
         ListFooterComponent={renderFooter}
         ListEmptyComponent={renderEmptyComponent}
         contentContainerStyle={
@@ -307,7 +387,8 @@ const LikesYouScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f0f0f0",
+    backgroundColor: "white",
+    paddingHorizontal: 24,
   },
   centerContent: {
     flex: 1,
@@ -315,18 +396,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   header: {
-    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight + 10 : 50,
     paddingBottom: 15,
     backgroundColor: "white",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e0e0e0",
+    flexDirection: "row",
+    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
     alignItems: "center",
-    justifyContent: "center",
+    borderBottomColor: "#e0e0e0",
     marginBottom: 10,
   },
   headerTitle: {
-    fontSize: 22,
-    fontWeight: "bold",
+    fontSize: 34,
+    textAlign: "left",
+    fontFamily: "MontserratBold",
     color: "#333",
   },
   loadingMoreContainer: {

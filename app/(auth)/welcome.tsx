@@ -1,8 +1,7 @@
-import React from "react";
+//
+
 import {
   StyleSheet,
-  View,
-  Text,
   TouchableOpacity,
   SafeAreaView,
   Image,
@@ -12,10 +11,68 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { LinearGradient } from "expo-linear-gradient";
 import { Path, Svg } from "react-native-svg";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, createIconSet } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import * as AuthSession from "expo-auth-session";
+import React, { use, useEffect, useState } from "react";
+import { Button, Text, View } from "react-native";
+import { makeRedirectUri } from "expo-auth-session";
+import * as QueryParams from "expo-auth-session/build/QueryParams";
+import * as WebBrowser from "expo-web-browser";
+import * as Linking from "expo-linking";
+import * as SecureStore from "expo-secure-store";
 import { supabase } from "@/lib/supabase";
+import { useSession } from "@/utils/AuthContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { toast } from "@/hooks/useToast";
+
+WebBrowser.maybeCompleteAuthSession();
+
+// Generate redirect URI
+const redirectTo = makeRedirectUri({
+  scheme: "skilloop",
+  path: "welcome",
+  useProxy: true,
+});
+
+const createSessionFromUrl = async (url: string) => {
+  const { params, errorCode } = QueryParams.getQueryParams(url);
+
+  if (errorCode) throw new Error(errorCode);
+
+  const { access_token, refresh_token } = params;
+  if (!access_token) return;
+
+  const { data, error } = await supabase.auth.setSession({
+    access_token,
+    refresh_token,
+  });
+
+  if (error) throw error;
+  return data.session;
+};
+
+// Generic OAuth login handler
+const performOAuth = async (provider: "github" | "google") => {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider,
+    options: {
+      redirectTo,
+      skipBrowserRedirect: true,
+    },
+  });
+
+  if (error) throw error;
+
+  const res = await WebBrowser.openAuthSessionAsync(
+    data?.url ?? "",
+    redirectTo
+  );
+
+  if (res.type === "success") {
+    const { url } = res;
+    return createSessionFromUrl(url);
+  }
+};
 
 const Logo = () => (
   <View style={styles.logoContainer}>
@@ -58,60 +115,64 @@ const SocialButton = ({
 
 export default function App() {
   const router = useRouter();
+  const { session, signIn } = useSession();
 
-  const signInWithGoogle = async () => {
-    console.log("running");
-    const redirectUri = AuthSession.makeRedirectUri({
-      native: "exp://172.16.2.3:8081/register", // update for your scheme
-    });
-
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: redirectUri,
-      },
-    });
-
-    if (error) {
-      Alert.alert("Login Error", error.message);
-      return;
+  const url = Linking.useURL();
+  // Handle deep links
+  useEffect(() => {
+    if (url) {
+      createSessionFromUrl(url).then((s) => {
+        if (s) handleSession(s);
+      });
     }
+  }, [url]);
 
-    const authResult = await AuthSession.startAsync({ authUrl: data.url });
+  // Handle new session and store tokens
+  const handleSession = async (s: any) => {
+    console.log("handleSession", s);
 
-    if (authResult.type !== "success") {
-      Alert.alert("Login cancelled");
-      return;
-    }
+    const { user } = s;
+    const id = user?.id;
 
-    // Wait for session
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    if (!id) return;
+    try {
+      console.log("checkSession", id);
+      // Check if user exists in your custom `profiles` or `users` table
+      const { data, error } = await supabase
+        .from("users") // or 'profiles', depending on your schema
+        .select("*")
+        .eq("id", id as string)
+        .single();
 
-    const user = session?.user;
+      if (error && error.code !== "PGRST116") {
+        throw error;
+      }
 
-    if (!user) {
-      Alert.alert("Failed to retrieve user session");
-      return;
-    }
-
-    // Check if profile exists
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .single();
-
-    if (profileError && profileError.code !== "PGRST116") {
-      Alert.alert("Error checking user profile", profileError.message);
-      return;
-    }
-
-    if (profile) {
-      router.push("/(tabs)");
-    } else {
-      router.push("/(registration)");
+      if (!data) {
+        await AsyncStorage.removeItem("session");
+        await AsyncStorage.setItem(
+          "gmail_user",
+          JSON.stringify({
+            id: id,
+            isGoogle: true,
+          })
+        );
+        toast({
+          title: "Google Signup",
+          description: "You have successfully signed in with Google.",
+          variant: "success",
+        });
+        // User not found – navigate to register page
+        router.push("/(registration)");
+      } else {
+        console.log("sddd");
+        // User exists – navigate to home or dashboard
+        signIn(id);
+        router.replace("/"); // adjust as needed
+      }
+    } catch (err) {
+      console.error("Error checking user:", err);
+      Alert.alert("Error", "There was a problem checking your account.");
     }
   };
 
@@ -246,7 +307,10 @@ export default function App() {
             <Ionicons name="arrow-redo-outline" size={24} color="white" />
           </TouchableOpacity>
 
-          <SocialButton provider="google" signInWithGoogle={signInWithGoogle} />
+          <SocialButton
+            provider="google"
+            signInWithGoogle={() => performOAuth("google")}
+          />
         </View>
 
         <View style={styles.actionContainer}>

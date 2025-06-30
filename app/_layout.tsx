@@ -6,12 +6,13 @@ import {
   DefaultTheme,
   ThemeProvider,
 } from "@react-navigation/native";
-import { Slot, Stack, useRouter } from "expo-router"; // Import useRouter
+import { Slot, Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
-import { View, Text } from "react-native";
+import { View, Text, SafeAreaView } from "react-native";
 import { useFonts } from "expo-font";
 import "react-native-get-random-values";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -28,61 +29,51 @@ export default function RootLayout() {
   }
 
   return (
-    <SessionProvider>
-      <AuthStack />
-    </SessionProvider>
+    <SafeAreaProvider>
+      <SessionProvider>
+        <AuthStack />
+      </SessionProvider>
+    </SafeAreaProvider>
   );
 }
 
 function AuthStack() {
   const { session, isLoading } = useSession();
-  const router = useRouter(); // Initialize router
+  const router = useRouter();
 
-  const colorScheme = useColorScheme();
-
-  // Redirect logic (important for initial load and auth state changes)
   useEffect(() => {
-    if (isLoading) return; // Wait for session to load
+    if (isLoading) return;
 
     if (session) {
-      // User is logged in
-      router.replace("/(tabs)"); // Navigate to the authenticated tabs
+      router.replace("/(tabs)");
     } else {
-      // User is not logged in
-      router.replace("/(auth)/welcome"); // Navigate to the unauthenticated auth group (e.g., welcome screen)
+      router.replace("/(auth)/welcome");
     }
-  }, [session, isLoading, router]); // Dependency array: re-run when session or loading state changes
+  }, [session, isLoading, router]);
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+      <SafeAreaView
+        style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+      >
         <Text>Checking session...</Text>
-      </View>
+      </SafeAreaView>
     );
   }
 
-  // Render Stack for all possible top-level routes
   return (
     <ThemeProvider value={DefaultTheme}>
-      <Stack screenOptions={{ headerShown: false }}>
-        {/* Unauthenticated routes - accessible when session is null */}
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="(registration)" options={{ headerShown: false }} />
-
-        {/* Authenticated routes - accessible when session is not null */}
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="chat/[id]" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="(settings)/index"
-          options={{ headerShown: false }}
-        />
-        {/* Potentially other authenticated screens like user profile, settings outside tabs */}
-        {/* <Stack.Screen name="settings" options={{ headerShown: false }} /> */}
-
-        {/* Not Found Screen */}
-        <Stack.Screen name="+not-found" />
-      </Stack>
-      <StatusBar style="auto" />
+      <SafeAreaView style={{ flex: 1 }}>
+        <StatusBar style="auto" />
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(registration)" />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="chat/[id]" />
+          <Stack.Screen name="(settings)/index" />
+          <Stack.Screen name="+not-found" />
+        </Stack>
+      </SafeAreaView>
     </ThemeProvider>
   );
 }

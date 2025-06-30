@@ -43,7 +43,7 @@ const ProfileComplete = () => {
   const handleGoHome = () => {
     // Navigate to your main authenticated screen (e.g., the tabs)
     // Use replace to prevent going back to the completion screen
-    router.replace("/(tabs)"); // Adjust this route to your actual authenticated home screen
+    router.replace("/login"); // Adjust this route to your actual authenticated home screen
   };
 
   return (

@@ -7,7 +7,7 @@ import { useProfileStore } from "@/store/useProfileStore"; // Assuming correct p
 import { formatDate, formatDateForDisplay } from "@/utils/dateUtils"; // Assuming these utilities exist
 import { useNavigation } from "@react-navigation/native"; // Assuming this is used for goBack
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { use, useEffect, useState } from "react";
 import {
   Modal,
   ScrollView,
@@ -23,6 +23,7 @@ import {
 } from "react-native";
 import { API_BASE_URL } from "@/env"; // Assuming this exists
 import QuestionHeader from "@/components/PageHeader/QuestionHeader"; // Assuming this exists
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // IMPORTANT: MAKE SURE API_BASE_URL IS CORRECTLY SET IN YOUR env FILE.
 // Ngrok free tunnels change frequently.
@@ -112,6 +113,7 @@ const WorkExperienceScreen = () => {
     endDate: "", // Format: MM/YYYY
     currentlyWorking: false,
   });
+  const [isGoogle, setIsGoogle] = useState(false);
   const router = useRouter();
 
   const handleChange = (name: string, value: string) => {
@@ -150,6 +152,17 @@ const WorkExperienceScreen = () => {
       [field]: cleanedText,
     });
   };
+
+  useEffect(() => {
+    async function getGoogleUser() {
+      const data = await AsyncStorage.getItem("gmail_user");
+      if (data) {
+        const user = JSON.parse(data);
+        setIsGoogle(user);
+      }
+    }
+    getGoogleUser();
+  }, []);
 
   const handleAddExperience = () => {
     // Basic validation for required fields
@@ -238,10 +251,24 @@ const WorkExperienceScreen = () => {
     );
   };
 
+  let mobileNumber;
+  if (profile.basicInfo && profile.basicInfo.mobile) {
+    mobileNumber = profile.basicInfo.mobile;
+  } else {
+    // WARNING: This is for temporary testing only!
+    // It is not suitable for a production database due to collision risk.
+    // It violates the `unique` constraint in your Prisma schema.
+    mobileNumber = "9" + Math.floor(Math.random() * 9000000000) + ""; // Generates a random 10-digit number starting with '9'
+    console.warn(
+      "Using a random number as a fallback for mobile_number. This is not recommended for production."
+    );
+  }
+
   const sendProfileDataToBackend = async (data: any) => {
-    console.log("Attempting to send data:", data?.mobile_number || data?.name);
+    // console.log("Attempting to send data:", data?.mobile_number || data?.name);
     setIsLoading(true); // Start loading for the API call
 
+    // console.log(data);
     try {
       const fullUrl = `${API_BASE_URL}/api/auth/register`; // Confirm this is the correct endpoint
       console.log("Sending profile data to URL:", fullUrl);
@@ -250,10 +277,6 @@ const WorkExperienceScreen = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          // Add authorization headers if needed, e.g., 'Authorization': `Bearer ${token}`
-          // You'd typically pass the user's JWT/access token obtained from Supabase auth here
-          // const { data: { session } } = await supabase.auth.getSession();
-          // if (session?.access_token) { headers['Authorization'] = `Bearer ${session.access_token}`; }
         },
         body: JSON.stringify(data),
       });
@@ -262,7 +285,7 @@ const WorkExperienceScreen = () => {
 
       if (!response.ok) {
         // Handle non-200 responses
-        console.error("Backend error:", response.status, responseData);
+        // console.error("Backend error:", response.status, responseData);
         const errorMessage =
           responseData.error ||
           responseData.message ||
@@ -271,6 +294,7 @@ const WorkExperienceScreen = () => {
       }
 
       // Success case
+      await AsyncStorage.removeItem("gmail_user");
       console.log("Backend Success Response Data:", responseData);
 
       toast({
@@ -284,10 +308,12 @@ const WorkExperienceScreen = () => {
       // Ensure resetProfile exists and does what you expect
       // resetProfile(); // Call this if you want to clear the form/store after submission
 
+      resetProfile();
       // Navigate to the next screen after successful API call
       router.replace("/(registration)/profile-complete"); // Navigate to confirmation/success screen
     } catch (error: any) {
       console.error("API call failed:", error);
+      resetProfile();
       toast({
         title: "Registration Failed",
         description: error.message || "Please try again later.",
@@ -307,14 +333,16 @@ const WorkExperienceScreen = () => {
     // Ensure mandatory info exists before sending
     // This check might be redundant if previous steps enforced it, but good failsafe
     const basicInfo = profile.basicInfo;
-    if (!basicInfo || !basicInfo.mobile) {
+    if (!basicInfo || (!basicInfo.mobile && !isGoogle.isGoogle)) {
       Alert.alert("Missing Info", "Basic information is incomplete.");
       return;
     }
 
+    console.log(profile.basicInfo, "sdfsdfsdf");
     const dataToSend = {
+      id: isGoogle.isGoogle ? isGoogle.id : null,
       // Ensure these keys match your backend's expected structure and your Prisma schema
-      mobile_number: basicInfo.mobile, // Use mobile from basicInfo
+      mobile_number: mobileNumber, // Use mobile from basicInfo
       user_type: profile.userType || "Unknown",
       name: basicInfo.fullName || "Unknown Name", // Use fullName from basicInfo
       gender: basicInfo.gender || "Not Specified",
@@ -322,11 +350,11 @@ const WorkExperienceScreen = () => {
       location: basicInfo.location || "Unknown Location",
 
       // Location coordinates might be nested or optional
-      latitude: profile.location?.latitude
-        ? parseFloat(profile.location.latitude)
+      latitude: profile.basicInfo?.latitude
+        ? parseFloat(profile.basicInfo.latitude)
         : null,
-      longitude: profile.location?.longitude
-        ? parseFloat(profile.location.longitude)
+      longitude: profile.basicInfo?.longitude
+        ? parseFloat(profile.basicInfo.longitude)
         : null,
 
       // Profile images (check if they exist and extract URLs)
@@ -392,10 +420,10 @@ const WorkExperienceScreen = () => {
       expoPushToken: profile.expoPushToken || null, // Assuming you collect this
     };
 
-    console.log(
-      "Sending final profile data structure:",
-      JSON.stringify(dataToSend, null, 2)
-    );
+    // console.log(
+    //   "Sending final profile data structure:",
+    //   JSON.stringify(dataToSend, null, 2)
+    // );
 
     await sendProfileDataToBackend(dataToSend);
 
@@ -412,24 +440,26 @@ const WorkExperienceScreen = () => {
     // This also completes the step and sends the data, just with potentially empty work_experience
     // Need to send all *other* collected data even if work experience is skipped.
     const basicInfo = profile.basicInfo;
-    if (!basicInfo || !basicInfo.mobile) {
+    if (!basicInfo || (!basicInfo.mobile && !isGoogle.isGoogle)) {
       Alert.alert("Missing Info", "Basic information is incomplete.");
       return;
     }
 
     const dataToSend = {
-      mobile_number: basicInfo.mobile,
+      id: isGoogle.isGoogle ? isGoogle.id : null,
+      mobile_number: mobileNumber, // Use mobile from basicInfo
       user_type: profile.userType || "Unknown",
       name: basicInfo.fullName || "Unknown Name",
       gender: basicInfo.gender || "Not Specified",
       age: basicInfo.age ? parseInt(basicInfo.age, 10) : 0,
       location: basicInfo.location || "Unknown Location",
 
-      latitude: profile.location?.latitude
-        ? parseFloat(profile.location.latitude)
+      // Location coordinates might be nested or optional
+      latitude: profile.basicInfo?.latitude
+        ? parseFloat(profile.basicInfo.latitude)
         : null,
-      longitude: profile.location?.longitude
-        ? parseFloat(profile.location.longitude)
+      longitude: profile.basicInfo?.longitude
+        ? parseFloat(profile.basicInfo.longitude)
         : null,
 
       profile_image:
@@ -472,10 +502,10 @@ const WorkExperienceScreen = () => {
       expoPushToken: profile.expoPushToken || null,
     };
 
-    console.log(
-      "Sending profile data structure after Skip:",
-      JSON.stringify(dataToSend, null, 2)
-    );
+    // console.log(
+    //   "Sending profile data structure after Skip:",
+    //   JSON.stringify(dataToSend, null, 2)
+    // );
 
     await sendProfileDataToBackend(dataToSend);
 

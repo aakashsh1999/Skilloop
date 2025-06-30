@@ -19,9 +19,16 @@ import { useSession } from "@/utils/AuthContext";
 import { io, Socket } from "socket.io-client";
 import { API_BASE_URL } from "@/env";
 import { ChatAPI, ChatMessage as ApiChatMessage } from "@/api/index";
+import { Feather, Ionicons, MaterialIcons } from "@expo/vector-icons";
 
 interface LocalChatMessage extends ApiChatMessage {
   senderType: "me" | "other" | "system" | "suggestion";
+  messageStatus?: "sending" | "sent" | "error";
+}
+
+interface QuickActionMessage {
+  text: string;
+  message: string;
 }
 
 const ChatScreen = () => {
@@ -48,77 +55,105 @@ const ChatScreen = () => {
   const [messages, setMessages] = useState<LocalChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [socketConnected, setSocketConnected] = useState(false);
+  const [isChatEmpty, setIsChatEmpty] = useState(true);
 
   const socketRef = useRef<Socket | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
 
-  // Auto-scroll to bottom when messages change
+  const quickActionMessages: QuickActionMessage[] = [
+    {
+      text: "👋 Say Hi",
+      message: "Hey there! 👋 Just wanted to say hi and connect!",
+    },
+    {
+      text: "🤝 Propose Project",
+      message:
+        "Hi! I came across your profile and think we might be a good fit for a project I'm working on. Would you be open to chatting about a potential collaboration?",
+    },
+    {
+      text: "💬 Ask About Their Work",
+      message:
+        "Hey! Your work looks really interesting. I'd love to hear more about what you're currently working on!",
+    },
+  ];
+
   useEffect(() => {
     if (scrollViewRef.current) {
-      scrollViewRef.current.scrollToEnd({ animated: true });
+      const scrollTimeout = setTimeout(() => {
+        scrollViewRef.current.scrollToEnd({ animated: true });
+      }, 100);
+      return () => clearTimeout(scrollTimeout);
     }
   }, [messages]);
 
-  // --- Socket.IO Connection and Event Handling ---
+  useEffect(() => {
+    setIsChatEmpty(messages.length === 0);
+  }, [messages.length]);
+
   useEffect(() => {
     if (!loggedInUserId || !matchId) {
-      console.warn("Missing loggedInUserId or matchId for chat.");
       setLoading(false);
       return;
     }
 
     const socket = io(API_BASE_URL, {
       transports: ["websocket"],
-      // You might need to add auth headers here if your backend requires it for socket connections
-      // auth: { token: 'your_auth_token_here' }
     });
     socketRef.current = socket;
 
     socket.on("connect", () => {
-      console.log("Socket connected:", socket.id);
       setSocketConnected(true);
       socket.emit("joinChat", { userId: loggedInUserId, matchId });
     });
 
     socket.on("chatJoined", (message) => {
-      console.log("Chat joined:", message);
       fetchHistoricalMessages();
     });
 
-    socket.on("receiveMessage", (newMessage: ApiChatMessage) => {
-      console.log("Message received:", newMessage);
+    socket.on("receiveMessage", (receivedMessage: ApiChatMessage) => {
       setMessages((prevMessages) => {
-        // Prevent adding duplicate if it was an optimistic update from *this* client
-        // This check is important if you later decide to re-introduce optimistic updates
-        // For now, with optimistic updates removed, this ensures messages are unique.
-        if (prevMessages.find((msg) => msg.id === newMessage.id)) {
-          return prevMessages; // Message already exists, likely from a previous optimistic update that was confirmed
+        // If message with this ID already exists, ignore
+        if (prevMessages.some((msg) => msg.id === receivedMessage.id)) {
+          return prevMessages;
         }
 
-        const senderType =
-          newMessage.senderId === loggedInUserId ? "me" : "other";
-        return [
-          ...prevMessages,
-          {
-            ...newMessage,
-            senderType,
-            createdAt: new Date(newMessage.createdAt).toISOString(),
-          },
-        ];
+        // Replace optimistic "sending" message if found
+        const index = prevMessages.findIndex(
+          (msg) =>
+            msg.senderId === receivedMessage.senderId &&
+            msg.message === receivedMessage.message &&
+            msg.messageStatus === "sending"
+        );
+
+        const newMessage: LocalChatMessage = {
+          ...receivedMessage,
+          senderType:
+            receivedMessage.senderId === loggedInUserId ? "me" : "other",
+          messageStatus: "sent",
+          createdAt: new Date(receivedMessage.createdAt).toISOString(),
+        };
+
+        if (index !== -1) {
+          // Replace the optimistic message
+          const updatedMessages = [...prevMessages];
+          updatedMessages[index] = newMessage;
+          return updatedMessages;
+        }
+
+        // If no optimistic message found, just append
+        return [...prevMessages, newMessage];
       });
     });
 
     socket.on("chatError", (error: string) => {
-      console.error("Chat Error:", error);
       Alert.alert("Chat Error", error);
     });
 
     socket.on("disconnect", () => {
-      console.log("Socket disconnected.");
       setSocketConnected(false);
       Alert.alert(
         "Disconnected",
-        "You have been disconnected from chat. Please refresh."
+        "You have been disconnected from the chat. Please try refreshing the screen."
       );
     });
 
@@ -130,9 +165,11 @@ const ChatScreen = () => {
     };
   }, [loggedInUserId, matchId]);
 
-  // --- Fetch Historical Messages ---
   const fetchHistoricalMessages = useCallback(async () => {
-    if (!loggedInUserId || !matchId) return;
+    if (!loggedInUserId || !matchId) {
+      setLoading(false);
+      return;
+    }
 
     try {
       setLoading(true);
@@ -140,64 +177,118 @@ const ChatScreen = () => {
       const formattedHistory: LocalChatMessage[] = history.map((msg) => ({
         ...msg,
         senderType: msg.senderId === loggedInUserId ? "me" : "other",
+        messageStatus: "sent",
       }));
       setMessages(formattedHistory);
     } catch (error) {
-      console.error("Failed to fetch historical messages:", error);
       Alert.alert("Error", "Failed to load chat history.");
     } finally {
       setLoading(false);
     }
   }, [loggedInUserId, matchId]);
 
-  // --- Send Message Function ---
-  const sendMessage = () => {
-    if (messageInput.trim() === "") return;
-    if (!socketRef.current || !socketConnected) {
-      Alert.alert("Error", "Not connected to chat server.");
-      return;
-    }
-    if (!loggedInUserId || !otherUserId || !matchId) {
-      Alert.alert("Error", "Missing chat context (user/match IDs).");
-      return;
-    }
+  const sendMessage = useCallback(
+    (messageToSend: string) => {
+      if (messageToSend.trim() === "") return;
+      if (!socketRef.current || !socketConnected) {
+        Alert.alert("Error", "Not connected to chat server.");
+        return;
+      }
+      if (!loggedInUserId || !otherUserId || !matchId) {
+        Alert.alert("Error", "Missing chat context (user/match IDs).");
+        return;
+      }
 
-    const messageData = {
-      matchId,
-      senderId: loggedInUserId,
-      receiverId: otherUserId,
-      message: messageInput.trim(),
-    };
+      const tempMessageId = `temp_${Date.now()}_${Math.random()
+        .toString(36)
+        .substring(7)}`;
 
-    socketRef.current.emit("sendMessage", messageData);
-    setMessageInput(""); // Clear input immediately
+      const messageData = {
+        matchId,
+        senderId: loggedInUserId,
+        receiverId: otherUserId,
+        message: messageToSend.trim(),
+      };
 
-    // REMOVED OPTIMISTIC UI UPDATE HERE.
-    // The message will now appear in the UI only when the server
-    // broadcasts it back via `receiveMessage`.
+      socketRef.current.emit("sendMessage", messageData);
+
+      const optimisticMessage: LocalChatMessage = {
+        id: tempMessageId,
+        matchId,
+        senderId: loggedInUserId,
+        receiverId: otherUserId,
+        message: messageToSend.trim(),
+        createdAt: new Date().toISOString(),
+        senderType: "me",
+        messageStatus: "sending",
+      };
+
+      setMessages((prevMessages) => [...prevMessages, optimisticMessage]);
+
+      setMessageInput("");
+    },
+    [socketConnected, loggedInUserId, otherUserId, matchId]
+  );
+
+  const handleQuickActionPress = (messageText: string) => {
+    sendMessage(messageText);
   };
 
-  // --- Message Bubble Component (unchanged) ---
+  // const MessageBubble = ({ message }: { message: LocalChatMessage }) => {
+  //   const isMyMessage = message.senderId === loggedInUserId;
+
+  //   return (
+  //     <View
+  //       style={[
+  //         styles.messageBubble,
+  //         isMyMessage ? styles.myMessage : styles.otherMessage,
+  //       ]}
+  //     >
+  //       {!isMyMessage && (
+  //         <Image
+  //           source={{ uri: message.senderAvatar }}
+  //           style={{
+  //             width: 50,
+  //             height: 50,
+  //             borderRadius: 25,
+  //             shadowColor: "#000",
+  //             shadowOffset: { width: 0, height: 4 },
+  //             shadowOpacity: 0.3,
+  //             shadowRadius: 5,
+  //             elevation: 5,
+  //             position: "absolute",
+  //             borderWidth: 1,
+  //             left: -30,
+  //             zIndex: -1,
+  //           }}
+  //         />
+  //       )}
+  //       <Text
+  //         style={[
+  //           styles.messageText,
+  //           isMyMessage ? styles.myMessageText : styles.otherMessageText,
+  //         ]}
+  //       >
+  //         {message.message}
+  //       </Text>
+  //       <View style={styles.messageFooter}>
+  //         <Text
+  //           style={isMyMessage ? styles.myMessageTime : styles.otherMessageTime}
+  //         >
+  //           {new Date(message.createdAt).toLocaleTimeString([], {
+  //             hour: "2-digit",
+  //             minute: "2-digit",
+  //           })}
+  //         </Text>
+  //         {isMyMessage && message.messageStatus === "sending" && (
+  //           <Text style={styles.messageStatus}>Sending...</Text>
+  //         )}
+  //       </View>
+  //     </View>
+  //   );
+  // };
+
   const MessageBubble = ({ message }: { message: LocalChatMessage }) => {
-    if (message.senderType === "system") {
-      return (
-        <View style={styles.systemMessage}>
-          <Text style={styles.systemMessageText}>{message.message}</Text>
-          <TouchableOpacity style={styles.sendTaskButton}>
-            <Text style={styles.sendTaskText}>Send a task</Text>
-          </TouchableOpacity>
-        </View>
-      );
-    }
-
-    if (message.senderType === "suggestion") {
-      return (
-        <TouchableOpacity style={styles.suggestionBubble}>
-          <Text style={styles.suggestionText}>{message.message}</Text>
-        </TouchableOpacity>
-      );
-    }
-
     const isMyMessage = message.senderId === loggedInUserId;
 
     return (
@@ -207,6 +298,37 @@ const ChatScreen = () => {
           isMyMessage ? styles.myMessage : styles.otherMessage,
         ]}
       >
+        {!isMyMessage && (
+          <View
+            style={{
+              shadowColor: "#000",
+              shadowOffset: {
+                width: 0,
+                height: 12,
+              },
+              shadowOpacity: 0.5,
+              shadowRadius: 16.0,
+              elevation: 24,
+              position: "absolute",
+              left: -35,
+              alignSelf: "center", // Center vertically relative to bubble
+              bottom: 2.5, // Place at bottom of bubble
+              zIndex: -1,
+              width: 50,
+              height: 50,
+            }}
+          >
+            <Image
+              source={{ uri: message.senderAvatar }}
+              style={{
+                width: 50,
+                height: 50,
+                borderRadius: 25,
+                backgroundColor: "#fff", // ensures shadow appears clearly
+              }}
+            />
+          </View>
+        )}
         <Text
           style={[
             styles.messageText,
@@ -215,25 +337,22 @@ const ChatScreen = () => {
         >
           {message.message}
         </Text>
-        <Text
-          style={isMyMessage ? styles.myMessageTime : styles.otherMessageTime}
-        >
-          {new Date(message.createdAt).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        </Text>
+        <View style={styles.messageFooter}>
+          <Text
+            style={isMyMessage ? styles.myMessageTime : styles.otherMessageTime}
+          >
+            {new Date(message.createdAt).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </Text>
+          {isMyMessage && message.messageStatus === "sending" && (
+            <Text style={styles.messageStatus}>Sending...</Text>
+          )}
+        </View>
       </View>
     );
   };
-
-  console.log(
-    loggedInUserId,
-    matchId,
-    otherUserId,
-    userName,
-    "ChatScreen Debug Info"
-  );
 
   if (!loggedInUserId || !matchId || !otherUserId || !userName) {
     return (
@@ -261,17 +380,27 @@ const ChatScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar
+        barStyle={Platform.OS === "ios" ? "dark-content" : "default"}
+      />
+
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={styles.backButton}>←</Text>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backButtonTouchable}
+        >
+          <Image
+            source={require("../../assets/images/double-arrow.png")}
+            style={styles.backArrowIcon}
+            resizeMode="contain"
+          />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Chat</Text>
         <View style={styles.headerSpacer} />
       </View>
 
       <View style={styles.contactInfo}>
         <Image
-          source={{ uri: userAvatar || "https://via.placeholder.com/40" }}
+          source={{ uri: userAvatar || "https://via.placeholder.com/50" }}
           style={styles.contactAvatar}
         />
         <View style={styles.contactDetails}>
@@ -290,30 +419,42 @@ const ChatScreen = () => {
         contentContainerStyle={styles.messagesContentContainer}
         showsVerticalScrollIndicator={false}
       >
-        {/* Initial system message upon match */}
-        <MessageBubble
-          message={{
-            id: "sys-1",
-            matchId: matchId,
-            senderId: "system", // Consider using a unique ID for system/suggestion messages if you store them
-            receiverId: loggedInUserId,
-            message: `You and ${userName} matched!\nStart a conversation or propose a task`,
-            createdAt: new Date().toISOString(),
-            senderType: "system",
-          }}
-        />
-        {/* Initial suggestion message */}
-        <MessageBubble
-          message={{
-            id: "sugg-1",
-            matchId: matchId,
-            senderId: "suggestion", // Consider using a unique ID for system/suggestion messages if you store them
-            receiverId: loggedInUserId,
-            message: "Ask about their Work",
-            createdAt: new Date().toISOString(),
-            senderType: "suggestion",
-          }}
-        />
+        {isChatEmpty && (
+          <>
+            <Text style={styles.initialPromptText}>
+              You and {userName} Matched.
+            </Text>
+            <Text style={styles.initialPromptSubText}>
+              Start a conversation or propose a task
+            </Text>
+          </>
+        )}
+
+        {isChatEmpty && (
+          <View style={styles2.quickActionButtonsContainer}>
+            {quickActionMessages.map((action, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles2.quickActionButton,
+                  index === 0 ? styles2.editButton : styles2.customizeButton,
+                ]}
+                onPress={() => handleQuickActionPress(action.message)}
+              >
+                <Text
+                  style={[
+                    styles2.quickActionButtonText,
+                    index === 0
+                      ? styles2.editButtonText
+                      : styles2.customizeButtonText,
+                  ]}
+                >
+                  {action.text}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
         {messages.map((msg) => (
           <MessageBubble key={msg.id} message={msg} />
@@ -325,7 +466,7 @@ const ChatScreen = () => {
         keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
         style={styles.inputContainer}
       >
-        <View style={styles.inputRow}>
+        {/* <View style={styles.inputRow}>
           <TouchableOpacity style={styles.attachButton}>
             <Text style={styles.attachIcon}>📎</Text>
           </TouchableOpacity>
@@ -333,15 +474,77 @@ const ChatScreen = () => {
             style={styles.textInput}
             value={messageInput}
             onChangeText={setMessageInput}
-            placeholder="message..."
+           
             multiline
             returnKeyType="send"
-            onSubmitEditing={sendMessage}
+            onSubmitEditing={() => sendMessage(messageInput)}
+            blurOnSubmit={false}
           />
-          <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
-            <Text style={styles.sendIcon}>➤</Text>
+          <TouchableOpacity
+            style={styles.sendButton}
+            onPress={() => sendMessage(messageInput)}
+            disabled={!messageInput.trim()}
+          >
+            <Text
+              style={[
+                styles.sendIcon,
+                !messageInput.trim() && styles.sendIconDisabled,
+              ]}
+            >
+              ➤
+            </Text>
+          </TouchableOpacity>
+        </View> */}
+        <View style={styles.iconRow}>
+          <TouchableOpacity style={styles.iconBtn}>
+            <Image
+              source={require("../../assets/images/upload.png")}
+              style={{ width: 20, height: 20 }}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.iconBtn}>
+            <Image
+              source={require("../../assets/images/notes.png")}
+              style={{ width: 20, height: 20 }}
+              resizeMode="contain"
+            />{" "}
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.iconBtn}>
+            <Image
+              source={require("../../assets/images/task.png")}
+              style={{ width: 20, height: 20 }}
+              resizeMode="contain"
+            />
           </TouchableOpacity>
         </View>
+        <TextInput
+          placeholder="message..."
+          style={styles.textInput}
+          placeholderTextColor="#999"
+          value={messageInput}
+          onChangeText={setMessageInput}
+          multiline
+          returnKeyType="send"
+          onSubmitEditing={() => {
+            sendMessage(messageInput);
+            setMessageInput("");
+          }}
+          blurOnSubmit={false}
+          onKeyPress={({ nativeEvent }) => {
+            if (nativeEvent.key === "Enter" && !nativeEvent.shiftKey) {
+              sendMessage(messageInput);
+              setMessageInput("");
+            }
+          }}
+        />
+        <TouchableOpacity style={styles.sendButton}>
+          <Image
+            source={require("../../assets/images/mic.png")}
+            style={{ width: 20, height: 20 }}
+            resizeMode="contain"
+          />
+        </TouchableOpacity>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -350,7 +553,7 @@ const ChatScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#F8F8F8",
   },
   centerContent: {
     flex: 1,
@@ -360,20 +563,19 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 15,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     backgroundColor: "#fff",
-    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight + 10 : 50,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#e0e0e0",
   },
-  backButton: {
-    fontSize: 24,
-    color: "#000",
+  backButtonTouchable: {
+    padding: 8,
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: "600",
-    color: "#000",
-    marginLeft: 16,
+  backArrowIcon: {
+    width: 24,
+    height: 24,
+    tintColor: "#000",
   },
   headerSpacer: {
     flex: 1,
@@ -403,116 +605,89 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contactName: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "600",
     color: "#000",
     marginBottom: 2,
-  },
-  contactRole: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 2,
-  },
-  portfolioLink: {
-    fontSize: 14,
-    color: "#007AFF",
   },
   contactActions: {
     flexDirection: "row",
     gap: 16,
   },
   actionIcon: {
-    fontSize: 20,
+    fontSize: 22,
   },
   messagesContainer: {
     flex: 1,
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    backgroundColor: "#F8F8F8",
   },
   messagesContentContainer: {
     paddingBottom: 20,
   },
   messageBubble: {
-    maxWidth: "80%",
-    padding: 12,
-    borderRadius: 18,
-    marginVertical: 4,
+    maxWidth: "85%",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 35,
+    marginVertical: 6,
     flexDirection: "column",
   },
   myMessage: {
     alignSelf: "flex-end",
-    backgroundColor: "#007AFF",
+    backgroundColor: "#D9D9D9",
+    borderWidth: 1,
   },
   otherMessage: {
     alignSelf: "flex-start",
-    backgroundColor: "#fff",
+    backgroundColor: "white",
+    marginLeft: 30,
+    borderWidth: 1,
   },
   messageText: {
     fontSize: 16,
+    lineHeight: 22,
+    fontFamily: "Montserrat",
   },
   myMessageText: {
-    color: "#fff",
+    color: "black",
   },
   otherMessageText: {
     color: "#000",
   },
-  myMessageTime: {
-    color: "rgba(255,255,255,0.7)",
-    fontSize: 10,
-    alignSelf: "flex-end",
+  messageFooter: {
+    flexDirection: "row",
+    alignItems: "center",
     marginTop: 4,
+  },
+  myMessageTime: {
+    color: "rgba(0,0,0,0.7)",
+    fontSize: 8,
   },
   otherMessageTime: {
     color: "rgba(0,0,0,0.5)",
-    fontSize: 10,
-    alignSelf: "flex-start",
-    marginTop: 4,
+    fontSize: 8,
   },
-  systemMessage: {
-    alignItems: "center",
-    marginVertical: 16,
-    paddingHorizontal: 20,
-  },
-  systemMessageText: {
-    fontSize: 14,
-    color: "#666",
-    textAlign: "center",
-    marginBottom: 12,
-    lineHeight: 20,
-  },
-  sendTaskButton: {
-    backgroundColor: "#FFB800",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-  },
-  sendTaskText: {
-    color: "#000",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  suggestionBubble: {
-    alignSelf: "center",
-    backgroundColor: "#E8F4FD",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 16,
-    marginVertical: 4,
-  },
-  suggestionText: {
-    color: "#007AFF",
-    fontSize: 14,
+  messageStatus: {
+    color: "rgba(0,0,20,0.7)",
+    fontSize: 8,
+    fontFamily: "Montserrat",
+    marginLeft: 8,
   },
   inputContainer: {
     backgroundColor: "#fff",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#e0e0e0",
+    paddingHorizontal: 8,
+    marginHorizontal: 10,
+    borderWidth: 1,
+    marginBottom: 10,
+    borderRadius: 35,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
   },
   inputRow: {
     flexDirection: "row",
-    alignItems: "flex-end",
+    alignItems: "center",
     gap: 8,
   },
   attachButton: {
@@ -520,20 +695,21 @@ const styles = StyleSheet.create({
   },
   attachIcon: {
     fontSize: 20,
+    color: "#666",
   },
   textInput: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
-    borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 8,
+    borderLeftWidth: 1,
+    borderColor: "#e0e0e0",
+    fontFamily: "Montserrat",
     maxHeight: 100,
     fontSize: 16,
     lineHeight: 22,
   },
   sendButton: {
-    backgroundColor: "#007AFF",
+    backgroundColor: "#BFD5CD",
     borderRadius: 20,
     padding: 8,
     width: 36,
@@ -544,31 +720,88 @@ const styles = StyleSheet.create({
   sendIcon: {
     color: "#fff",
     fontSize: 16,
+    fontWeight: "bold",
   },
-  bottomNav: {
-    flexDirection: "row",
-    backgroundColor: "#fff",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderTopWidth: 1,
-    borderTopColor: "#e0e0e0",
+  sendIconDisabled: {
+    color: "#ccc",
   },
-  navItem: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 8,
-  },
-  activeNavItem: {
-    opacity: 1,
-  },
-  navIcon: {
+  initialPromptText: {
+    textAlign: "center",
     fontSize: 20,
-    marginBottom: 4,
+    fontFamily: "Montserrat",
+    fontWeight: "600",
+    marginTop: 20,
   },
-  navLabel: {
-    fontSize: 12,
+  initialPromptSubText: {
+    textAlign: "center",
+    marginTop: 5,
+    fontSize: 16,
+    fontFamily: "Montserrat",
     color: "#666",
+    marginBottom: 20,
   },
+  iconRow: {
+    flexDirection: "row",
+    paddingVertical: 8,
+    marginRight: 8,
+    alignItems: "center",
+    gap: 6,
+  },
+  iconBtn: {
+    width: 30,
+    height: 30,
+    backgroundColor: "#fff",
+    borderRadius: 15,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    borderWidth: 1,
+    elevation: 1,
+  },
+});
+
+const styles2 = StyleSheet.create({
+  quickActionButtonsContainer: {
+    padding: 20,
+    alignItems: "center",
+    backgroundColor: "#F8F8F8",
+    marginTop: 10,
+  },
+  quickActionButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderRadius: 50,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    marginBottom: 10,
+    maxWidth: 300,
+    width: "100%",
+  },
+  editButton: {
+    backgroundColor: "#F6D3BD",
+    borderColor: "#F6D3BD",
+  },
+  editButtonText: {
+    fontFamily: "Montserrat",
+    color: "#333",
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  customizeButton: {
+    backgroundColor: "#BFD5CD",
+    borderColor: "#BFD5CD",
+  },
+  customizeButtonText: {
+    color: "#333",
+    fontSize: 16,
+    fontWeight: "500",
+    fontFamily: "Montserrat",
+  },
+  quickActionButtonText: {},
 });
 
 export default ChatScreen;

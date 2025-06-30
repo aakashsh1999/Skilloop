@@ -1,5 +1,8 @@
 "use client";
 
+import BusinessCardDisplay from "@/components/SummarCard";
+import { useRouter } from "expo-router";
+import { useLocalSearchParams, useSearchParams } from "expo-router/build/hooks";
 import { useState, useRef } from "react";
 import {
   View,
@@ -11,158 +14,67 @@ import {
   Animated,
   Share,
   Alert,
+  Platform,
+  StatusBar,
 } from "react-native";
+import React from "react";
+import { Ionicons } from "@expo/vector-icons"; //
 
-const BusinessCardScreen = ({ navigation, route }) => {
+const BusinessCardScreen = () => {
+  const router = useRouter();
   const [isFlipped, setIsFlipped] = useState(false);
   const flipAnimation = useRef(new Animated.Value(0)).current;
 
-  const profile = route?.params?.profile || {
-    name: "Erik Tyler",
-    role: "App developer",
-    avatar: "/placeholder.svg?height=80&width=80",
-    portfolio: "Website/Portfolio",
-  };
-
-  const flipCard = () => {
-    const toValue = isFlipped ? 0 : 1;
-
-    Animated.timing(flipAnimation, {
-      toValue,
-      duration: 600,
-      useNativeDriver: true,
-    }).start();
-
-    setIsFlipped(!isFlipped);
-  };
-
-  const shareCard = async () => {
-    try {
-      await Share.share({
-        message: `Check out ${profile.name}'s business card!`,
-        url: "https://example.com/card/erik-tyler",
-        title: `${profile.name} - ${profile.role}`,
-      });
-    } catch (error) {
-      Alert.alert("Error", "Unable to share card");
-    }
-  };
-
-  const frontInterpolate = flipAnimation.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["0deg", "180deg"],
-  });
-
-  const backInterpolate = flipAnimation.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["180deg", "360deg"],
-  });
+  const { userData } = useLocalSearchParams();
+  const profile = JSON.parse(userData as string);
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>←</Text>
+        <TouchableOpacity onPress={() => router.back()}>
+          <Image
+            source={require("./../assets/images/double-arrow.png")}
+            style={{ width: 20, height: 20 }}
+            resizeMode="contain"
+          />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Business Card</Text>
-        <TouchableOpacity onPress={shareCard}>
-          <Text style={styles.shareButton}>📤</Text>
-        </TouchableOpacity>
+        <Image
+          source={require("./../assets/images/Card.png")}
+          style={{ width: 20, height: 20, marginLeft: 5 }}
+          resizeMode="contain"
+        />
       </View>
 
       <View style={styles.cardContainer}>
-        <TouchableOpacity onPress={flipCard} activeOpacity={0.8}>
-          <View style={styles.cardWrapper}>
-            {/* Front of Card */}
-            <Animated.View
-              style={[
-                styles.card,
-                styles.cardFront,
-                { transform: [{ rotateY: frontInterpolate }] },
-              ]}
-            >
-              <View style={styles.cardHeader}>
-                <Image
-                  source={{ uri: profile.avatar }}
-                  style={styles.cardAvatar}
-                />
-                <View style={styles.cardInfo}>
-                  <Text style={styles.cardName}>{profile.name}</Text>
-                  <Text style={styles.cardRole}>{profile.role}</Text>
-                  <TouchableOpacity>
-                    <Text style={styles.portfolioLink}>
-                      {profile.portfolio}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              <View style={styles.socialIcons}>
-                <TouchableOpacity style={styles.socialIcon}>
-                  <Text style={styles.socialIconText}>🌐</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.socialIcon}>
-                  <Text style={styles.socialIconText}>📧</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.socialIcon}>
-                  <Text style={styles.socialIconText}>📱</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.socialIcon}>
-                  <Text style={styles.socialIconText}>💼</Text>
-                </TouchableOpacity>
-              </View>
-            </Animated.View>
-
-            {/* Back of Card */}
-            <Animated.View
-              style={[
-                styles.card,
-                styles.cardBack,
-                { transform: [{ rotateY: backInterpolate }] },
-              ]}
-            >
-              <View style={styles.qrContainer}>
-                <View style={styles.qrCode}>
-                  <Text style={styles.qrText}>QR</Text>
-                </View>
-                <Text style={styles.qrLabel}>{profile.name}</Text>
-                <Text style={styles.qrSubLabel}>Scan to share a link card</Text>
-              </View>
-            </Animated.View>
-          </View>
-        </TouchableOpacity>
+        <BusinessCardDisplay
+          profileData={profile}
+          flipAnimation={flipAnimation}
+          isFlipped={isFlipped}
+          canFlip={true}
+          onPressFlip={() => setIsFlipped(!isFlipped)}
+          onChatPress={() => {}}
+          onApprove={() => console.log("approve")}
+        />
       </View>
 
-      <View style={styles.actionButtons}>
-        <TouchableOpacity style={styles.actionButton}>
-          <Text style={styles.actionButtonText}>Add card to home screen</Text>
-        </TouchableOpacity>
+      <View
+        style={{
+          width: "95%",
+          justifyContent: "center",
+          alignSelf: "center",
+          height: 1,
+          backgroundColor: "black",
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.1,
+          shadowRadius: 5,
+          elevation: 4,
+        }}
+      ></View>
 
-        <TouchableOpacity style={styles.actionButton}>
-          <Text style={styles.actionButtonText}>Customize your card</Text>
-          <Text style={styles.actionButtonIcon}>✏️</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionButton}>
-          <Text style={styles.actionButtonText}>Edit your card</Text>
-          <Text style={styles.actionButtonIcon}>⚙️</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem}>
-          <Text style={styles.navIcon}>🏠</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
-          <Text style={styles.navIcon}>💬</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
-          <Text style={styles.navIcon}>📋</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.navItem, styles.activeNavItem]}>
-          <Text style={styles.navIcon}>👤</Text>
-        </TouchableOpacity>
+      <View style={[styles.actionButtons]}>
+        <CardActions />
       </View>
     </SafeAreaView>
   );
@@ -171,14 +83,14 @@ const BusinessCardScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "white",
   },
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 20,
-    paddingVertical: 15,
+    // paddingVertical: 15,
+    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
     backgroundColor: "#fff",
   },
   backButton: {
@@ -188,13 +100,15 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: "600",
+    fontFamily: "MontserratBold",
+    marginLeft: 20,
     color: "#000",
   },
   shareButton: {
     fontSize: 20,
   },
   cardContainer: {
-    flex: 1,
+    height: 300,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 20,
@@ -300,6 +214,8 @@ const styles = StyleSheet.create({
   },
   actionButtons: {
     paddingHorizontal: 20,
+    width: "auto",
+    flex: 1,
     paddingVertical: 20,
     gap: 12,
   },
@@ -311,6 +227,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     shadowColor: "#000",
+    width: "auto",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
@@ -347,3 +264,105 @@ const styles = StyleSheet.create({
 });
 
 export default BusinessCardScreen;
+
+const CardActions = () => {
+  return (
+    <View style={styles2.container}>
+      {/* Button 1: Add card to home screen */}
+      <TouchableOpacity style={styles2.addButton}>
+        <Text style={styles2.addButtonText}>Add card to home screen</Text>
+      </TouchableOpacity>
+
+      {/* Button 2: Customize your card */}
+      <TouchableOpacity style={styles2.customizeButton}>
+        <Text style={styles2.customizeButtonText}>Customize your card </Text>
+        <Image
+          source={require("./../assets/images/pen1.png")}
+          style={{ width: 20, height: 20 }}
+          resizeMode="contain"
+        />
+        {/* A blue pencil icon */}
+      </TouchableOpacity>
+
+      {/* Button 3: Edit your card */}
+      <TouchableOpacity style={styles2.editButton}>
+        <Text style={styles2.editButtonText}>Edit your card </Text>
+        <Image
+          source={require("./../assets/images/pn2.png")}
+          style={{ width: 20, height: 20 }}
+          resizeMode="contain"
+        />
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+const styles2 = StyleSheet.create({
+  container: {
+    padding: 20,
+    alignItems: "center", // Center align the buttons horizontally
+    backgroundColor: "#fff", // Or your screen's background color
+  },
+  // Style for the black 'Add card' button
+  addButton: {
+    backgroundColor: "#000",
+    borderRadius: 20, // Large border radius for pill shape
+    paddingVertical: 20,
+    paddingHorizontal: 40,
+    marginBottom: 30,
+    width: "90%", // Adjust width as needed
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  addButtonText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "600",
+    fontFamily: "MontserratBold",
+  },
+  // Style for the 'Customize' button
+  customizeButton: {
+    flexDirection: "row", // Arrange text and icon in a row
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#BFD5CD40", // Light gray background
+    borderWidth: 1,
+    borderColor: "black", // Light gray border
+    borderRadius: 50,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    width: "70%",
+    marginBottom: 15,
+  },
+  customizeButtonText: {
+    color: "#000",
+    fontSize: 16,
+    fontWeight: "500",
+    fontFamily: "MontserratBold",
+  },
+  // Style for the 'Edit' button
+  editButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F6D3BD40", // Very light pink/orange background
+    borderWidth: 1,
+    borderColor: "black", // Light pink/orange border
+    borderRadius: 50,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    width: "70%",
+  },
+  editButtonText: {
+    fontFamily: "MontserratBold",
+
+    color: "#000",
+    fontSize: 16,
+    fontWeight: "500",
+  },
+});

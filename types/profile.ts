@@ -47,6 +47,7 @@ export interface BasicInfo {
   fullName: string;
   age: string;
   gender: string;
+  email: string;
   location: string;
   latitude: number | null;
   longitude: number | null;

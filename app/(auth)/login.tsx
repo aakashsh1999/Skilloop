@@ -13,6 +13,8 @@ import {
   TextStyle,
   Image,
 } from "react-native";
+import * as Linking from "expo-linking";
+
 import Svg, { Path } from "react-native-svg";
 import { Feather } from "@expo/vector-icons"; // Import Feather from Expo Vector Icons
 import OtpModal from "@/components/OTPModal";
@@ -22,11 +24,64 @@ import { useSession } from "@/utils/AuthContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "@/lib/supabase";
 import { makeRedirectUri, startAsync } from "expo-auth-session";
+import * as QueryParams from "expo-auth-session/build/QueryParams";
+import * as WebBrowser from "expo-web-browser";
+import { toast } from "@/hooks/useToast";
+
 // --- PhoneInput Component (Inline) ---
 interface PhoneInputProps {
   onPhoneChange: (phone: string) => void;
   defaultCountryCode?: string;
 }
+
+WebBrowser.maybeCompleteAuthSession();
+
+// Generate redirect URI
+const redirectTo = makeRedirectUri({
+  scheme: "skilloop",
+  path: "welcome",
+  useProxy: true,
+});
+
+const createSessionFromUrl = async (url: string) => {
+  const { params, errorCode } = QueryParams.getQueryParams(url);
+
+  if (errorCode) throw new Error(errorCode);
+
+  const { access_token, refresh_token } = params;
+  if (!access_token) return;
+
+  const { data, error } = await supabase.auth.setSession({
+    access_token,
+    refresh_token,
+  });
+
+  if (error) throw error;
+  return data.session;
+};
+
+// Generic OAuth login handler
+const performOAuth = async (provider: "github" | "google") => {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider,
+    options: {
+      redirectTo,
+      skipBrowserRedirect: true,
+    },
+  });
+
+  if (error) throw error;
+
+  const res = await WebBrowser.openAuthSessionAsync(
+    data?.url ?? "",
+    redirectTo
+  );
+
+  if (res.type === "success") {
+    const { url } = res;
+    return createSessionFromUrl(url);
+  }
+};
 
 const PhoneInput: React.FC<PhoneInputProps> = ({
   onPhoneChange,
@@ -423,7 +478,7 @@ const AuthForm: React.FC = () => {
           // Existing user: login successful, handle JWT or navigation
           console.log("User logged in:", data.user.id);
           signIn(data.user.id);
-          router.push("/(tabs)");
+          router.replace("/(tabs)");
         }
       } else {
         Alert.alert("OTP Verification Failed", data.error || "Invalid OTP");
@@ -434,137 +489,64 @@ const AuthForm: React.FC = () => {
     setIsLoading(false);
   };
 
-  const signInWithGoogle = async () => {
-    setIsLoading(true); // Start global loading
-
-    // IMPORTANT: Set your redirect URI correctly.
-    // For production, use makeRedirectUri() without a fixed IP
-    // and configure a custom scheme in app.json/app.config.js and Supabase.
-    // Example using a static scheme 'your-app-scheme':
-    const redirectUri = makeRedirectUri({
-      // FIX: Use makeRedirectUri directly
-      native: "your-app-scheme://auth/callback", // Use a generic path like /auth/callback
-      // If using Expo Go on LAN/Tunnel, uncomment and check console logs for the dev URL:
-      // native: AuthSession.makeRedirectUri().replace("exp://", "your-app-scheme://"), // Another approach
-      // If running in dev client or standalone, the scheme needs to match app.json/app.config.js
-      // Use the exact URI printed by makeRedirectUri in your terminal during dev if needed
-      // native: "exp://172.16.2.3:8081/--/auth/callback" // Example for specific dev setup
-    });
-
-    console.log("Redirect URI for Google SSO:", redirectUri); // Log the generated URI
-
-    try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: redirectUri,
-          // queryParams: { access_type: 'offline', prompt: 'consent' }, // Example advanced options
-        },
+  const url = Linking.useURL();
+  // Handle deep links
+  useEffect(() => {
+    if (url) {
+      createSessionFromUrl(url).then((s) => {
+        if (s) handleSession(s);
       });
+    }
+  }, [url]);
 
-      if (error) {
-        console.error("Supabase signInWithOAuth error:", error);
-        Alert.alert("Login Error", error.message);
-        // Keep loading true if this initial step fails? Or set to false?
-        // Setting false allows retrying. Let's keep in finally.
-        return;
+  // Handle new session and store tokens
+  const handleSession = async (s: any) => {
+    console.log("handleSession", s);
+
+    const { user } = s;
+    const id = user?.id;
+
+    if (!id) return;
+    try {
+      console.log("checkSession", id);
+      // Check if user exists in your custom `profiles` or `users` table
+      const { data, error } = await supabase
+        .from("users") // or 'profiles', depending on your schema
+        .select("*")
+        .eq("id", id as string)
+        .single();
+
+      if (error && error.code !== "PGRST116") {
+        throw error;
       }
 
-      if (data.url) {
-        // This opens the browser/custom tab. The Supabase client listens for the redirect.
-        // FIX: Use startAsync directly
-        const authResult = await startAsync({ authUrl: data.url });
-
-        if (authResult.type !== "success") {
-          // authResult.type could be 'cancel' or 'error'
-          if (authResult.type === "error") {
-            console.error("AuthSession startAsync error:", authResult.error);
-            Alert.alert("Login Error", "Authentication session failed.");
-          } else {
-            // 'cancel'
-            console.log("Login cancelled by user.");
-            // User cancelled the browser flow, no session to process.
-          }
-          // Loading will be set to false in finally
-          return; // Stop the function here
-        }
-
-        // If authResult.type is 'success', the Supabase client should have
-        // processed the code/token automatically when the app reopened.
-        console.log("AuthSession successful, checking for session...");
-
-        // Now, wait for the Supabase client to process the redirect and set the session.
-        // Use getSession() to retrieve the session stored by the Supabase client.
-        const {
-          data: { session },
-          error: sessionError,
-        } = await supabase.auth.getSession();
-
-        if (sessionError) {
-          console.error(
-            "Error fetching session after AuthSession success:",
-            sessionError
-          );
-          Alert.alert("Session Error", sessionError.message);
-          return;
-        }
-
-        const user = session?.user;
-
-        if (!user) {
-          // This is an unexpected state if authResult was 'success'
-          console.warn("User session is null after successful auth session.");
-          Alert.alert("Login Failed", "Could not retrieve user session.");
-          return;
-        }
-
-        console.log("Supabase User UID:", user.id);
-
-        // --- Check if profile exists in the 'users' table ---
-        // Based on your schema `model User @@map("users")`
-        const { data: profile, error: profileError } = await supabase
-          .from("users") // *** CORRECT TABLE NAME ***
-          .select("id") // Select just the ID, or any minimal data
-          .eq("id", user.id)
-          .single();
-
-        if (profileError && profileError.code !== "PGRST116") {
-          // PGRST116 means "No rows found", which is expected for a new user.
-          // Any other error code indicates a real database problem.
-          console.error("Error checking user profile:", profileError);
-          Alert.alert("Database Error", profileError.message);
-          // Consider logging out the user here if profile check fails critically
-          // await supabase.auth.signOut();
-          return;
-        }
-
-        if (profile) {
-          // Profile found: Existing user
-          console.log("Profile found. Navigating to tabs.");
-          // Your useSession context should pick up the session via onAuthStateChange
-          router.replace("/(tabs)"); // Use replace to clear login history
-        } else {
-          // No profile found (PGRST116): New user needs registration
-          console.log("No profile found. Navigating to registration.");
-          // Pass necessary info (like user ID or email from Google) to registration screen
-          // The user ID is available via supabase.auth.getUser() on the registration screen.
-          router.replace("/(registration)"); // Use replace
-        }
+      if (!data) {
+        await AsyncStorage.removeItem("session");
+        await AsyncStorage.setItem(
+          "gmail_user",
+          JSON.stringify({
+            id: id,
+            isGoogle: true,
+          })
+        );
+        toast({
+          title: "Google Signup",
+          description: "You have successfully signed in with Google.",
+          variant: "success",
+        });
+        // User not found – navigate to register page
+        router.push("/(registration)");
       } else {
-        // This case should ideally not happen with signInWithOAuth redirect flow
-        console.warn("signInWithOAuth did not return a URL unexpectedly.");
-        Alert.alert("Login Error", "Could not initiate Google login flow.");
+        console.log("sddd");
+        // User exists – navigate to home or dashboard
+        signIn(id);
+        router.replace("/"); // adjust as needed
       }
-    } catch (error: any) {
-      // Catch any other unexpected errors
-      console.error("An unexpected error occurred during Google login:", error);
-      Alert.alert("An error occurred", error.message || "Please try again.");
-    } finally {
-      setIsLoading(false); // Stop loading regardless of success or failure
+    } catch (err) {
+      console.error("Error checking user:", err);
+      Alert.alert("Error", "There was a problem checking your account.");
     }
   };
-
-  // Your existing handleSocialLogin etc remain unchanged
 
   return (
     <View style={authFormStyles.container}>
@@ -584,7 +566,7 @@ const AuthForm: React.FC = () => {
         <SocialButton
           provider="google"
           onPress={() => {
-            signInWithGoogle();
+            performOAuth("google");
           }}
         />
       </View>

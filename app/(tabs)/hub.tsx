@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -10,29 +10,79 @@ import {
   Platform,
   ImageBackground,
   StatusBar,
-  ActivityIndicator, // Import ActivityIndicator
+  ActivityIndicator,
+  Alert, // Import Alert
 } from "react-native";
 import { Feather } from "@expo/vector-icons"; // Import Feather for icons
 import { useRouter } from "expo-router";
 import { useSession } from "@/utils/AuthContext"; // Assuming this context provides session/user ID
 import { supabase } from "@/lib/supabase"; // Import your Supabase client
 
+// Define the UserProfile interface for better type safety
+interface UserProfile {
+  id: string;
+  name: string | null;
+  user_type: string | null;
+  age: number | null;
+  gender: string | null;
+  location: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  profile_image: string | null;
+  face: string | null; // Assuming this is a URL or path to an image
+  skill_type: string | null;
+  short_bio: string | null;
+  business_card: string | null; // Assuming this is a URL or path to an image/PDF
+  certificates: string[]; // Array of certificate names/URLs
+  work_experience: any[]; // Adjust type based on your schema
+  skills: string[]; // Array of skills
+  social_links: any; // Adjust type based on your schema (e.g., { linkedin: string, twitter: string })
+  avatar: string | null; // URL to avatar image
+  status: string | null;
+  expoPushToken: string | null;
+}
+
 // Define the configuration for the locked feature cards
 const FEATURE_CARDS_CONFIG = [
-  { id: "task_management", title: "Task\nManagement", locked: true }, // Title can include \n for multiline
-  { id: "payment", title: "Payment", locked: true },
-  { id: "skill_clash", title: "Skill Clash", locked: true },
-  { id: "courses", title: "Courses", locked: true },
-  { id: "analytics", title: "Analytics", locked: true, fullWidth: true }, // Flag for full width
+  {
+    id: "task_management",
+    title: "Task\nManagement",
+    locked: true,
+    bg: "../../assets/images/hub_1.png",
+  }, // Replace with your image
+  {
+    id: "payment",
+    title: "Payment",
+    locked: true,
+    bg: "../../assets/images/hub_1.png",
+  }, // Replace with your image
+  {
+    id: "skill_clash",
+    title: "Skill Clash",
+    locked: true,
+    bg: "../../assets/images/hub_1.png",
+  }, // Replace with your image
+  {
+    id: "courses",
+    title: "Courses",
+    locked: true,
+    bg: "../../assets/images/hub_1.png",
+  }, // Replace with your image
+  {
+    id: "analytics",
+    title: "Analytics",
+    locked: true,
+    fullWidth: true,
+    bg: "../../assets/feature_analytics_bg.png",
+  }, // Replace with your image
 ];
 
 export default function HubScreen() {
   const { session, isLoading: isSessionLoading } = useSession(); // Get session and its loading state
-  const [profile, setProfile] = useState<any>(null); // State to store the fetched user profile
+  const [profile, setProfile] = useState<UserProfile | null>(null); // State to store the fetched user profile
   const [isLoadingProfile, setIsLoadingProfile] = useState(true); // State for profile fetching loading
   const [error, setError] = useState<string | null>(null); // State for fetch errors
 
-  console.log(session, "ss");
   const router = useRouter();
 
   // --- Fetch Profile Data ---
@@ -41,7 +91,7 @@ export default function HubScreen() {
       // Only proceed if session is loaded and a user ID is available
       if (isSessionLoading || !session) {
         if (!isSessionLoading) {
-          // If session finished loading but no user, handle unauthenticated
+          // If session finished loading but no user, handle unauthenticated state
           console.warn("Session or User ID not available for profile fetch.");
           setIsLoadingProfile(false); // Stop loading state
           setProfile(null); // Ensure profile is null
@@ -59,15 +109,9 @@ export default function HubScreen() {
       try {
         const { data, error } = await supabase
           .from("users") // Query your 'users' table
-          .select(
-            `
-            id, name, user_type, age, gender, location, latitude, longitude,
-            profile_image, face, skill_type, short_bio, business_card,
-            certificates, work_experience, skills, social_links,
-            avatar, status, expoPushToken
-          `
-          ) // Select all fields needed for the hub screen (adjust as per your schema and display needs)
-          .eq("id::uuid", session as string); // Add 'as string' for TypeScript clarity          .single(); // Expecting a single row
+          .select("*")
+          .eq("id:uuid", session)
+          .single(); // Select all fields needed for the hub screen (adjust as per your schema and display needs)
 
         if (error && error.code !== "PGRST116") {
           // PGRST116 is 'No rows found', which is an expected case if profile creation failed earlier
@@ -77,7 +121,7 @@ export default function HubScreen() {
 
         if (data) {
           console.log("Profile fetched successfully.");
-          setProfile(data); // Store the fetched data
+          setProfile(data as UserProfile); // Store the fetched data with type assertion
         } else {
           // Case where user is authenticated but no profile exists in 'users' table
           console.warn(
@@ -89,7 +133,7 @@ export default function HubScreen() {
             "Profile data incomplete. Please complete your registration or contact support."
           );
           // Optional: Redirect to the registration flow if profile is missing
-          // router.replace('/registration'); // Adjust path if needed
+          // router.replace('/profile-setup'); // Adjust path if needed
         }
       } catch (err: any) {
         console.error("Error fetching profile:", err);
@@ -102,7 +146,7 @@ export default function HubScreen() {
 
     // Call the fetch function
     fetchProfile();
-  }, [session, isSessionLoading]); // Re-run effect if session or its loading state changes
+  }, [session, isSessionLoading, router]); // Added router to dependency array if used inside effect
 
   // --- Conditional Rendering: Loading, Error, or Content ---
   if (isLoadingProfile || isSessionLoading) {
@@ -114,75 +158,40 @@ export default function HubScreen() {
     );
   }
 
-  // if (error) {
-  //   return (
-  //     <View style={styles.centeredContainer}>
-  //       <Text style={styles.errorText}>{error}</Text>
-  //       {/* Add a button to retry or go to login/registration */}
-  //       {!session && ( // If no session, prompt login
-  //         <TouchableOpacity
-  //           onPress={() => router.replace("/login")}
-  //           style={styles.actionButton}
-  //         >
-  //           <Text style={styles.actionButtonText}>Go to Login</Text>
-  //         </TouchableOpacity>
-  //       )}
-  //       {session &&
-  //         !profile && ( // If session but no profile, prompt registration or retry
-  //           <>
-  //             <Text style={styles.errorSubText}>
-  //               Please ensure your profile is complete.
-  //             </Text>
-  //             {/* Optional: Button to retry fetch or go to registration */}
-  //             {/* <TouchableOpacity onPress={() => fetchProfile()} style={styles.actionButton}>
-  //                         <Text style={styles.actionButtonText}>Retry</Text>
-  //                     </TouchableOpacity> */}
-  //             {/* Or direct to registration if that's the flow */}
-  //           </>
-  //         )}
-  //       {/* For other fetch errors, just show the error message */}
-  //     </View>
-  //   );
-  // }
-
-  // If we reach here, profile is loaded (or null if error was just a warning)
-  // Check if profile is actually null before rendering main content
-  // if (!profile) {
-  //   // This case is handled by the error state, but good to have a fallback UI
-  //   return (
-  //     <View style={styles.centeredContainer}>
-  //       <Text style={styles.errorText}>Profile data not available.</Text>
-  //       <Text style={styles.errorSubText}>
-  //         Please log in or complete your profile.
-  //       </Text>
-  //       <TouchableOpacity
-  //         onPress={() => router.replace("/login")}
-  //         style={styles.actionButton}
-  //       >
-  //         <Text style={styles.actionButtonText}>Go to Login</Text>
-  //       </TouchableOpacity>
-  //     </View>
-  //   );
-  // }
+  if (error) {
+    return (
+      <View style={styles.centeredContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+        {/* If no session, prompt login */}
+        {!session && !isSessionLoading && (
+          <TouchableOpacity
+            onPress={() => router.replace("/login")} // Adjust path if needed
+            style={styles.actionButton}
+          >
+            <Text style={styles.actionButtonText}>Go to Login</Text>
+          </TouchableOpacity>
+        )}
+        {session && !profile && !isLoadingProfile && (
+          <View style={styles.centeredContainer}>
+            <Text style={styles.errorSubText}>
+              Your profile information is missing or incomplete.
+            </Text>
+            <TouchableOpacity
+              onPress={() => router.push("/profile-setup")} // Navigate to profile setup/edit
+              style={styles.actionButton}
+            >
+              <Text style={styles.actionButtonText}>Complete Profile</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    );
+  }
 
   // --- Render Main Hub Content ---
   return (
     <SafeAreaView style={styles.container}>
-      {/* Use a platform-specific StatusBar style */}
-      <StatusBar
-        barStyle={Platform.OS === "ios" ? "dark-content" : "light-content"}
-        backgroundColor="#fff"
-      />
-
-      {/* Header - Removed from the image design */}
-      {/* <View style={styles.header}>
-        <TouchableOpacity style={styles.headerButton}>
-          <Feather name="menu" size={24} color="#000" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.headerButton}>
-          <Feather name="settings" size={24} color="#000" />
-        </TouchableOpacity>
-      </View> */}
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
 
       <ScrollView
         style={styles.scrollView}
@@ -196,27 +205,32 @@ export default function HubScreen() {
             style={[styles.iconButton, styles.editIcon]}
             onPress={() => {
               console.log("Edit profile pressed");
-              // Navigate to your profile edit screen, potentially passing current profile data
-              router.push("/(registration)/basic-information"); // Example route to basic info
-              // You might need a dedicated 'EditProfile' screen that loads data
-              // or pass profile.id as a parameter
+              router.push("/profile-setup"); // Example route to basic info or profile edit
             }}
           >
-            <Feather name="edit-3" size={20} color="black" />{" "}
-            {/* Pencil icon variant */}
+            <Image
+              source={require("../../assets/images/pen.png")}
+              width={10}
+              height={10}
+              style={{ width: 25, height: 25 }}
+              resizeMode="contain"
+            />
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.iconButton, styles.filterIcon]}
             onPress={() => {
               console.log("Filter pressed");
-              // Handle filter logic or navigate to filter screen
-              // Example: router.push('/filter-settings');
               Alert.alert("Under Development", "Filter options coming soon!");
             }}
           >
-            <Feather name="menu" size={20} color="black" />{" "}
-            {/* Filter icon */}
+            <Image
+              source={require("../../assets/images/switches.png")}
+              width={10}
+              height={10}
+              style={{ marginLeft: 5, width: 20, height: 20 }}
+              resizeMode="contain"
+            />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -226,33 +240,38 @@ export default function HubScreen() {
               router.push("/(settings)"); // Navigate to settings screen
             }}
           >
-            <Feather name="settings" size={20} color="black" />{" "}
-            {/* Settings icon */}
+            <Image
+              source={require("../../assets/images/settings.png")}
+              width={10}
+              height={10}
+              style={{ marginLeft: 5, width: 20, height: 20 }}
+              resizeMode="contain"
+            />
           </TouchableOpacity>
 
           {/* Avatar */}
-          {/* Use profile_image or avatar from fetched data */}
           <Image
             source={{
-              uri: "https://via.placeholder.com/150?text=Avatar",
-            }} // Use fetched image, fallback to placeholder
+              uri:
+                profile?.profile_image ||
+                "https://via.placeholder.com/150?text=Avatar",
+            }}
             style={styles.avatar}
           />
 
           {/* Name */}
-          <Text style={styles.profileName}>{profile?.name || "No Name"}</Text>
+          <Text style={styles.profileName}>{profile?.name || "User Name"}</Text>
 
-          {/* My Profile / My Card Buttons */}
           <View style={styles.buttonContainer}>
             <TouchableOpacity
               style={[styles.profileButton, styles.myProfileButton]}
               onPress={() => {
                 console.log("My Profile pressed");
-                // Navigate to detailed profile view
-                // router.push(`/profile-view/${profile.id}`); // Example
+                // Example: Navigate to a detailed profile view page
+                // router.push(`/user/${profile?.id}`);
                 Alert.alert(
-                  "Under Development",
-                  "Detailed Profile view coming soon!"
+                  "Feature Under Development",
+                  "Detailed profile view coming soon!"
                 );
               }}
             >
@@ -262,83 +281,91 @@ export default function HubScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.profileButton, styles.myCardButton]}
-              onPress={() => router.push("/business-card")} // Navigate to business card screen
+              onPress={() => {
+                const dataToPass = {
+                  name: profile.name,
+                  role: profile.role,
+                  company: profile.company,
+                  business_card: profile.business_card,
+                  skills: profile.skills,
+                  bio: profile.bio,
+                  profile_image: profile.profile_image,
+                };
+
+                router.push({
+                  pathname: "/business-card",
+                  params: { userData: JSON.stringify(dataToPass) }, // ✅ serialize object
+                });
+              }}
             >
               <Text style={[styles.buttonText, styles.myCardText]}>
                 My Card
               </Text>
             </TouchableOpacity>
           </View>
-
-          {/* Skills/Badges (based on design image, seems to show skill type and user type) */}
-          <View style={styles.badgesContainer}>
-            {profile?.skill_type && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>
-                  {profile.skill_type || "test skill"}
-                </Text>
-              </View>
-            )}
-            {profile?.user_type && (
-              <View style={[styles.badge, styles.userTypeBadge]}>
-                {" "}
-                {/* Style for user type badge */}
-                <Text style={styles.badgeText}>
-                  {profile?.user_type || "Freelancer"}
-                </Text>
-              </View>
-            )}
-            {/* If you want to show skills as badges: */}
-            {/*
-               {Array.isArray(profile.skills) && profile.skills.map((skill: any, index: number) => (
-                   <View key={index} style={styles.badge}>
-                       <Text style={styles.badgeText}>{typeof skill === 'string' ? skill : skill?.name || ''}</Text>
-                   </View>
-               ))}
-               */}
-          </View>
         </View>
 
-        {/* Locked Features Grid & Analytics */}
-
+        {/* Locked Features Grid */}
         <View style={styles.featuresGrid}>
           {FEATURE_CARDS_CONFIG?.filter((card) => !card.fullWidth).map(
             (feature) => (
-              <ImageBackground
-                source={require("../../assets/reactbg.png")}
-                style={styles.featureCard}
-                resizeMode="cover"
+              <TouchableOpacity
+                key={feature.id}
+                style={styles.featureCardWrapper}
+                onPress={() =>
+                  Alert.alert(
+                    "Feature Locked",
+                    `This "${feature.title}" feature is not yet available.`
+                  )
+                }
               >
-                <TouchableOpacity key={feature.id} style={styles.featureCardBackground} >
-                  <Text style={styles.featureTitle}>
+                <ImageBackground
+                  source={
+                    feature.id == "task_management"
+                      ? require("../../assets/images/hub_1.png")
+                      : feature?.id === "skill_clash"
+                      ? require("../../assets/images/hub_2.png")
+                      : feature?.id === "payment"
+                      ? require("../../assets/images/hub_3.png")
+                      : feature?.id === "courses"
+                      ? require("../../assets/images/hub_4.png")
+                      : feature?.id === "analytics"
+                      ? require("../../assets/images/hub_1.png")
+                      : null
+                  } // Use the specific background image
+                  style={styles.featureCardContent}
+                  resizeMode="cover"
+                >
+                  {/* <Text style={styles.featureTitle}>
                     {feature?.title || "Feature title"}
                   </Text>
-                  {/* Optional: Add specific background images here matching design */}
-                  {/* <Image source={...} style={styles.featureCardBackground} /> */}
                   <View style={styles.lockContainer}>
-                    <Feather name="lock" size={32} color="#C0C0C0" />{" "}
-                    {/* Gray lock icon */}
-                  </View>
-                </TouchableOpacity>
-              </ImageBackground>
-
+                    <Feather name="lock" size={32} color="#C0C0C0" />
+                  </View> */}
+                </ImageBackground>
+              </TouchableOpacity>
             )
           )}
         </View>
 
-
-
         {/* Analytics Card (Full Width) */}
         {FEATURE_CARDS_CONFIG.filter((card) => card.fullWidth).map(
           (feature) => (
-            <TouchableOpacity key={feature.id} style={styles.analyticsCard}>
-              {/* Optional: Add specific background images here */}
-              {/* <Image source={...} style={styles.analyticsCardBackground} /> */}
-              <Text style={styles.analyticsTitle}>{feature.title}</Text>
-              <View style={styles.lockContainer}>
-                <Feather name="lock" size={32} color="#C0C0C0" />{" "}
-                {/* Gray lock icon */}
-              </View>
+            <TouchableOpacity
+              key={feature.id}
+              style={styles.analyticsCard}
+              onPress={() =>
+                Alert.alert(
+                  "Feature Locked",
+                  `This "${feature.title}" feature is not yet available.`
+                )
+              }
+            >
+              <ImageBackground
+                source={require("../../assets/images/hub_5.png")} // Use the specific background image
+                style={styles.analyticsCardBackground}
+                resizeMode="contain"
+              ></ImageBackground>
             </TouchableOpacity>
           )
         )}
@@ -356,7 +383,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#f8f9fa", // Light background color
   },
   centeredContainer: {
-    // Used for loading/error states
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
@@ -382,7 +408,6 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   actionButton: {
-    // Simple action button style for retry/login
     marginTop: 10,
     paddingVertical: 10,
     paddingHorizontal: 15,
@@ -394,210 +419,163 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
   },
-  // Header styles removed as per design image
-  // header: { ... },
-  // headerButton: { ... },
-
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    flexGrow: 1, // Allows content to expand
-    padding: 16, // Padding around all content inside scroll view
-    paddingBottom: 30, // Extra padding at the bottom
+    flexGrow: 1,
+    padding: 16,
+    paddingBottom: 30,
   },
   profileCard: {
-    backgroundColor: "#fff", // White background
+    backgroundColor: "#fff",
     borderWidth: 1,
-    borderRadius: 24, // Larger border radius
-    padding: 24, // Inner padding
-    alignItems: "center", // Center content horizontally
-    marginBottom: 20, // Space below card
-    shadowColor: "#000", // Shadow
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08, // Adjusted opacity
-    shadowRadius: 8,
-    elevation: 4,
-    position: "relative", // Needed for absolute positioning of icons
-  },
-  // Icons positioned absolutely within the profile card
-  iconButton: {
-    padding: 8, // Make touch area easier
-    position: "absolute",
-    zIndex: 1, // Ensure icons are tappable
-  },
-  editIcon: { top: 10, left: 10 }, // Position edit icon (pencil)
-  filterIcon: { top: 10, right: 40 }, // Position filter icon
-  settingsIcon: { top: 10, right: 10 }, // Position settings icon
-
-  avatar: {
-    width: 90, // Larger avatar size
-    height: 90,
-    borderRadius: 45, // Circular
-    marginBottom: 16, // Space below avatar
-    backgroundColor: "#e0e0e0", // Placeholder background
-    borderWidth: 3, // Border around avatar
-    borderColor: "#fff", // White border initially
-    // Note: The image shows a light background color behind the avatar, not a border
-    // You could achieve this with a View behind the avatar
-    // Example: <View style={styles.avatarBackground}><Image ... /></View>
-    // avatarBackground: { width: 96, height: 96, borderRadius: 48, backgroundColor: '#E0F2F7', justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
-  },
-  profileName: {
-    fontSize: 26, // Larger font for name
-    fontWeight: "bold", // Bold
-    color: "#000",
-    marginBottom: 15, // Space below name
-    textAlign: "center", // Center text
-  },
-  buttonContainer: {
-    flexDirection: "row", // Buttons side-by-side
-    gap: 12, // Space between buttons (RN 0.71+), or use margin
-    marginBottom: 15, // Space below button row
-  },
-  profileButton: {
-    // Base style for the two profile buttons
-    paddingHorizontal: 20,
-    paddingVertical: 5,
-    borderRadius: 20, // Oval shape
-    borderWidth: 1,
+    paddingTop: 10,
+    borderRadius: 40,
+    paddingHorizontal: 24,
     alignItems: "center",
-    justifyContent: "center", // Center content
-    minWidth: 100, // Minimum width
-  },
-  myProfileButton: {
-    // "My Profile" specific style
-    backgroundColor: "#BFD5CD", // Light green background
-    borderColor: "#000000", // Green border (adjust to match design)
-  },
-  myCardButton: {
-    // "My Card" specific style
-    backgroundColor: "#F6D3BD", // Light orange background
-    borderColor: "#000000", // Orange border (adjust to match design)
-  },
-  buttonText: {
-    // Base text style for the two profile buttons
-    fontSize: 12,
-    color: "#000000",
-    fontWeight: "500", // Semi-bold
-  },
-  myProfileText: {
-    // "My Profile" text color
-    color: "#000000", // Green text
-  },
-  myCardText: {
-    // "My Card" text color
-    color: "#000000", // Orange text
-  },
-  badgesContainer: {
-    // Container for skill/user type badges
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center", // Center badges
-    gap: 8, // Space between badges
-    marginTop: 10, // Space above badges
-    // marginBottom: 15, // Space below badges (handled by featuresGrid margin)
-  },
-  badge: {
-    // Style for a single badge
-    backgroundColor: "#E0F2F7", // Light blue/teal background
-    borderColor: "#00BCD4", // Teal border
-    borderWidth: 1,
-    borderRadius: 12, // Rounded corners
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  userTypeBadge: {
-    // Example: Style for the user type badge if different color is needed
-    backgroundColor: "#FFEDD5", // Light orange background
-    borderColor: "#FF9800", // Orange border
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: "500",
-    color: "#333", // Dark text
-  },
-
-  featuresGrid: {
-    // Container for the 2x2 feature cards
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between", // Distribute cards horizontally
-    gap: 0, // Space between cards (RN 0.71+)
-    marginBottom: 20, // Space below the grid
-  },
-  featureCard: {
-    width: 180,
-    height: 180,
-    alignItems: "center",
-    justifyContent: "center",
-    // borderWidth: 1,
-    position: "relative",
-    overflow: "hidden",
-      backgroundColor: "white",
-    // padding: 8
-  },
- 
-  featureCardBackground: {
-    width: "100%",
-    backgroundColor: "#F6D3BD",
-    height: "100%",
-    borderWidth:1,
-    flexDirection:"column",
-    alignItems:"center",
-    justifyContent:"center",
-    gap:10,
-    resizeMode: "cover", // Or 'contain', 'stretch'
-    opacity: 0.2, // Make it subtle
-    zIndex: 0, // Behind title and lock
-  },
-  featureTitle: {
-    // Style for the title inside feature cards
-    fontSize: 20, // Font size
-    fontWeight: "700", // Medium weight
-    textAlign:"center",
-    fontStyle:"italic",
-    color: "#000000", // Gray color from image
-    lineHeight: 20, // Adjusted line height for multiline
-    // textAlign: 'center', // Optional: if title is always one word
-    zIndex: 1, // Ensure title is above background image
-  },
-  lockContainer: {
-    
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 1, // Ensure lock is above background image
-  },
-  analyticsCard: {
-    // Style for the full-width analytics card
-    backgroundColor: "#fff", // White background
-    borderRadius: 20, // Rounded corners
-    padding: 24, // Inner padding (slightly more vertical padding seems implied)
-    flexDirection: "row", // Align title and lock horizontally
-    justifyContent: "space-between", // Space between title and lock
-    alignItems: "center", // Vertically align center
-    shadowColor: "#000", // Shadow
+    marginBottom: 0,
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 4,
-    position: "relative", // Needed for potential background images
-    overflow: "hidden", // Ensure background image respects border radius
+    position: "relative",
   },
-  analyticsCardBackground: {
-    // Optional: Style for background images within analytics card
+  iconButton: {
+    padding: 8,
     position: "absolute",
+    zIndex: 1,
+  },
+  editIcon: { top: 10, left: 10 },
+  filterIcon: { top: 10, right: 40 },
+  settingsIcon: { top: 10, right: 10 },
+  avatar: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    marginBottom: 16,
+    backgroundColor: "#e0e0e0",
+    borderWidth: 3,
+    borderColor: "#fff", // White border around avatar
+  },
+  profileName: {
+    fontSize: 26,
+    fontWeight: "bold",
+    color: "#000",
+    marginBottom: 15,
+    fontFamily: "MontserratBold",
+    textAlign: "center",
+  },
+  buttonContainer: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 15,
+  },
+  profileButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 100,
+  },
+  myProfileButton: {
+    backgroundColor: "#BFD5CD",
+    borderColor: "#000000",
+  },
+  myCardButton: {
+    backgroundColor: "#F6D3BD",
+    borderColor: "#000000",
+  },
+  buttonText: {
+    fontSize: 12,
+    fontWeight: "500",
+
+    color: "#000000",
+  },
+  myProfileText: {
+    color: "#000000",
+    fontFamily: "Montserrat",
+  },
+  myCardText: {
+    color: "#000000",
+    fontFamily: "Montserrat",
+  },
+  badgesContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 8,
+    marginTop: 10,
+  },
+  badge: {
+    backgroundColor: "#E0F2F7",
+    borderColor: "#00BCD4",
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  userTypeBadge: {
+    backgroundColor: "#FFEDD5",
+    borderColor: "#FF9800",
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: "#333",
+  },
+
+  featuresGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
+  featureCardWrapper: {
+    width: "48%", // Adjust to '49%' if you want a small gap without margin
+    aspectRatio: 1, // Make cards square, adjust if needed
+    marginTop: 16,
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  featureCardContent: {
+    flex: 1, // Ensure ImageBackground takes full space of wrapper
+    alignItems: "center",
     width: "100%",
     height: "100%",
-    resizeMode: "cover", // Or 'contain', 'stretch'
-    opacity: 0.2, // Make it subtle
-    zIndex: 0, // Behind title and lock
+    justifyContent: "center",
+    // padding: 16,
+  },
+  featureTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    textAlign: "center",
+    color: "#333", // Darker contrast for visibility
+    lineHeight: 22,
+  },
+  lockContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  analyticsCard: {
+    borderRadius: 20,
+    width: "100%",
+    height: 200,
+    overflow: "hidden",
+    position: "relative", // For absolute positioning of background if needed
+  },
+  analyticsCardBackground: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    resizeMode: "contain",
+    height: 200,
   },
   analyticsTitle: {
-    // Style for the analytics title
-    fontSize: 18, // Font size
-    fontWeight: "500", // Medium weight
-    color: "#C0C0C0", // Gray color from image
-    zIndex: 1, // Ensure title is above background image
+    fontSize: 18,
+    fontWeight: "500",
+    color: "#333", // Make title more visible, adjust as needed
+    zIndex: 1,
   },
 });

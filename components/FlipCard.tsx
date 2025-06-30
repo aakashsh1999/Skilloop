@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Animated,
   Image,
+  Linking,
 } from "react-native";
 
 interface FlipCardProps {
@@ -25,7 +26,9 @@ interface FlipCardProps {
 }
 
 const FlipCard: React.FC<FlipCardProps> = ({ item, type }) => {
+  console.log(item, "ddd");
   const [flipped, setFlipped] = useState(false);
+
   const animatedValue = useRef(new Animated.Value(0)).current;
 
   // Interpolations for front and back rotation
@@ -74,9 +77,17 @@ const FlipCard: React.FC<FlipCardProps> = ({ item, type }) => {
     } else {
       return (
         <View style={styles.cardBackContent}>
-          <Text style={styles.cardBackTitle}>{item.name}</Text>
-          <Text style={styles.cardBackSubtitle}>{item.issuer}</Text>
-          <Text style={styles.cardBackText}>{item.year}</Text>
+          <Text style={styles.cardBackTitle}>{item.title}</Text>
+          <Text style={styles.cardBackSubtitle}>{item.organization}</Text>
+          <Text style={styles.cardBackText}>{item.issueDate}</Text>
+          {item.certificateUrl ? (
+            <Text
+              style={styles.certificationUrl} // You'll need to define this style
+              onPress={() => Linking.openURL(item.certificateUrl)}
+            >
+              View Certification
+            </Text>
+          ) : null}
         </View>
       );
     }
@@ -97,9 +108,9 @@ const FlipCard: React.FC<FlipCardProps> = ({ item, type }) => {
     >
       <Animated.View style={[styles.flipCard, frontAnimatedStyle]}>
         <View style={styles.logoContainer}>
-          {item.logo ? (
+          {item.imageUrl ? (
             <Image
-              source={{ uri: item.logo }}
+              source={{ uri: item.imageUrl }}
               style={styles.logoImage}
               resizeMode="contain"
             />
@@ -142,7 +153,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     borderRadius: 50,
-    padding: 10,
+    paddingHorizontal: 10,
   },
   flipCardBack: {
     backgroundColor: "#f0f0f0",
@@ -154,8 +165,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   logoImage: {
-    width: "80%",
-    height: "80%",
+    width: "100%",
+    height: "100%",
+    borderRadius: 50,
   },
   logoPlaceholder: {
     fontSize: 40,
@@ -183,6 +195,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#777",
     textAlign: "center",
+  },
+  certificationUrl: {
+    color: "blue", // Or your preferred link color
+    textDecorationLine: "underline",
+    marginTop: 10, // Add some spacing above the link
+    fontSize: 14, // Adjust font size as needed
   },
 });
 

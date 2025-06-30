@@ -28,6 +28,7 @@ const BasicInformation: React.FC = () => {
   const { profile, updateBasicInfo, setCurrentStep, completeStep } =
     useProfileStore();
   const { mobile } = useLocalSearchParams(); // Assuming mobile might come from route params during initial signup flow
+  const [coords, setCoords] = useState<any>(null);
 
   // Get mobile from store if available, otherwise use route param
   const initialMobile =
@@ -88,6 +89,7 @@ const BasicInformation: React.FC = () => {
         accuracy: Location.Accuracy.High, // High or Balanced depending on need
         timeout: 15000, // Increased timeout slightly
       });
+      setCoords(location?.coords);
 
       console.log("Fetched location coordinates:", location.coords);
 
@@ -96,6 +98,7 @@ const BasicInformation: React.FC = () => {
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
       });
+      console.log("Reverse geocode result:", geocodeResult);
 
       console.log("Reverse geocode result:", geocodeResult);
 
@@ -169,12 +172,15 @@ const BasicInformation: React.FC = () => {
       return;
     }
 
+    console.log(location, " oddd");
     // Prepare data to update the store
     const dataToSave = {
       fullName: formData.fullName,
       age: formData.age,
       gender: formData.gender,
       location: formData.location, // Only save the address string
+      latitude: coords?.latitude,
+      longitude: coords?.longitude,
       mobile: formData.mobile, // Pass mobile from state (initially from route param or store)
       // Do NOT include latitude or longitude in updateBasicInfo
       // latitude: null, // Or explicitly null if necessary based on store signature

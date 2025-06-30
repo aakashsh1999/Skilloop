@@ -1,5 +1,5 @@
 import React from "react";
-import { View, TouchableOpacity, StyleSheet } from "react-native";
+import { View, TouchableOpacity, StyleSheet, Image } from "react-native";
 import { Feather, FontAwesome6, Ionicons } from "@expo/vector-icons";
 
 const FloatingButtons = ({ onDislike, onLike }) => {
@@ -13,7 +13,11 @@ const FloatingButtons = ({ onDislike, onLike }) => {
       </TouchableOpacity>
 
       <TouchableOpacity onPress={onLike} style={styles.fabButton}>
-        <FontAwesome6 name="handshake" size={30} color="black" />
+        <Image
+          source={require("../assets/like.png")}
+          style={{ width: 40, height: 40 }}
+          resizeMode="contain"
+        />
       </TouchableOpacity>
     </View>
   );

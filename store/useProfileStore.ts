@@ -54,6 +54,7 @@ const initialProfile: UserProfile = {
     location: "",
     latitude: null,
     longitude: null,
+    email: "",
   },
   userType: "freelancer",
   profileImages: [],
@@ -231,6 +232,3 @@ export const useProfileStore = create<ProfileState>()(
     }
   )
 );
-
-
-
