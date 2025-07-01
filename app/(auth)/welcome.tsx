@@ -1,4 +1,5 @@
-//
+// app/welcome.js (or your landing page file)
+"use client";
 
 import {
   StyleSheet,
@@ -6,92 +7,32 @@ import {
   SafeAreaView,
   Image,
   Alert,
+  BackHandler,
+  View,
+  Text,
 } from "react-native";
-// import { CircleDot } from "lucide-react-native";
 import { StatusBar } from "expo-status-bar";
-import { LinearGradient } from "expo-linear-gradient";
-import { Path, Svg } from "react-native-svg";
-import { Ionicons, createIconSet } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import React, { use, useEffect, useState } from "react";
-import { Button, Text, View } from "react-native";
-import { makeRedirectUri } from "expo-auth-session";
-import * as QueryParams from "expo-auth-session/build/QueryParams";
-import * as WebBrowser from "expo-web-browser";
-import * as Linking from "expo-linking";
-import * as SecureStore from "expo-secure-store";
-import { supabase } from "@/lib/supabase";
-import { useSession } from "@/utils/AuthContext";
+import { Ionicons } from "@expo/vector-icons";
+import { usePathname, useRouter } from "expo-router";
+import { useEffect, useState } from "react"; // Import useState
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { toast } from "@/hooks/useToast";
-
-WebBrowser.maybeCompleteAuthSession();
-
-// Generate redirect URI
-const redirectTo = makeRedirectUri({
-  scheme: "skilloop",
-  path: "welcome",
-  useProxy: true,
-});
-
-const createSessionFromUrl = async (url: string) => {
-  const { params, errorCode } = QueryParams.getQueryParams(url);
-
-  if (errorCode) throw new Error(errorCode);
-
-  const { access_token, refresh_token } = params;
-  if (!access_token) return;
-
-  const { data, error } = await supabase.auth.setSession({
-    access_token,
-    refresh_token,
-  });
-
-  if (error) throw error;
-  return data.session;
-};
-
-// Generic OAuth login handler
-const performOAuth = async (provider: "github" | "google") => {
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider,
-    options: {
-      redirectTo,
-      skipBrowserRedirect: true,
-    },
-  });
-
-  if (error) throw error;
-
-  const res = await WebBrowser.openAuthSessionAsync(
-    data?.url ?? "",
-    redirectTo
-  );
-
-  if (res.type === "success") {
-    const { url } = res;
-    return createSessionFromUrl(url);
-  }
-};
+import { useOAuth, useUser } from "@clerk/clerk-expo";
+import { Path, Svg } from "react-native-svg";
+import { supabase } from "@/lib/supabase";
+import { useSession } from "@/utils/AuthContext";
 
 const Logo = () => (
   <View style={styles.logoContainer}>
     <Image
       source={require("../../assets/images/skilloop.png")}
-      // style={styles.logoImage}
       style={{ width: 150, height: 50, resizeMode: "contain" }}
     />
   </View>
 );
 
-const SocialButton = ({
-  provider,
-  signInWithGoogle,
-}: {
-  provider: "google" | "apple";
-  signInWithGoogle: () => void;
-}) => (
-  <TouchableOpacity style={styles.socialButton} onPress={signInWithGoogle}>
+const SocialButton = ({ onPress }: { onPress: () => void }) => (
+  <TouchableOpacity style={styles.socialButton} onPress={onPress}>
     <Svg viewBox="0 0 24 24" width="24" height="24">
       <Path
         fill="#4285F4"
@@ -115,33 +56,86 @@ const SocialButton = ({
 
 export default function App() {
   const router = useRouter();
-  const { session, signIn } = useSession();
+  const { user, isLoaded } = useUser(); // useUser hook to get user details
+  const { startOAuthFlow } = useOAuth({ strategy: "oauth_google" });
+  const [isLoadingUser, setIsLoadingUser] = useState(false); // State to track if we're trying to get user details
+  const { signIn, session } = useSession();
+  const path = usePathname();
 
-  const url = Linking.useURL();
-  // Handle deep links
+  console.log("path", path);
+
   useEffect(() => {
-    if (url) {
-      createSessionFromUrl(url).then((s) => {
-        if (s) handleSession(s);
-      });
-    }
-  }, [url]);
+    const backAction = () => {
+      if (path === "/welcome" || path === "/(auth)/welcome") {
+        // Disable back button
+        return true;
+      }
+      return false;
+    };
 
-  // Handle new session and store tokens
-  const handleSession = async (s: any) => {
-    console.log("handleSession", s);
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      backAction
+    );
 
-    const { user } = s;
-    const id = user?.id;
-
-    if (!id) return;
+    return () => backHandler.remove();
+  }, [path]);
+  const handleGoogleSignIn = async () => {
+    setIsLoadingUser(true); // Start loading user data
     try {
-      console.log("checkSession", id);
-      // Check if user exists in your custom `profiles` or `users` table
+      const result = await startOAuthFlow();
+
+      if (result?.createdSessionId) {
+        await result.setActive({ session: result.createdSessionId });
+        // Now that the session is active, useUser should eventually populate
+        // We'll handle the next steps in the useEffect below that watches `user` and `isLoaded`
+      } else {
+        // Handle case where OAuth flow didn't return a session ID
+        toast({
+          title: "Sign in failed",
+          description: "No session returned from Google.",
+          variant: "destructive",
+        });
+        setIsLoadingUser(false); // Reset loading state
+      }
+    } catch (err) {
+      console.error("Google sign-in error:", err);
+      Alert.alert("Error", "Google sign-in failed.");
+      setIsLoadingUser(false); // Reset loading state on error
+    }
+  };
+
+  // This useEffect now specifically handles what to do *after* the session is created
+  // and the user object is populated.
+  useEffect(() => {
+    // Only proceed if Clerk is loaded, a user object is available, and we are currently in a loading state from the OAuth flow
+    if (isLoaded && user && isLoadingUser) {
+      const email = user.primaryEmailAddress?.emailAddress;
+      const name = user.fullName;
+      const imageUrl = user.imageUrl;
+      console.log("user", user?.primaryEmailAddress?.emailAddress);
+      initiateSignUpLogin(email);
+    }
+    // Add 'isLoadingUser' to dependencies to re-run this effect when it changes
+  }, [isLoaded, user, isLoadingUser, router]);
+
+  async function initiateSignUpLogin(email: string) {
+    if (!email) {
+      // Fallback if essential user info is missing
+      toast({
+        title: "Sign in error",
+        description: "Could not retrieve user details.",
+        variant: "destructive",
+      });
+      setIsLoadingUser(false); // Reset loading state
+      return;
+    }
+
+    try {
       const { data, error } = await supabase
-        .from("users") // or 'profiles', depending on your schema
+        .from("users")
         .select("*")
-        .eq("id", id as string)
+        .eq("email", email)
         .single();
 
       if (error && error.code !== "PGRST116") {
@@ -149,40 +143,57 @@ export default function App() {
       }
 
       if (!data) {
-        await AsyncStorage.removeItem("session");
+        // User not found - this is a new Google user
+
         await AsyncStorage.setItem(
           "gmail_user",
           JSON.stringify({
-            id: id,
+            email: email,
             isGoogle: true,
           })
         );
         toast({
-          title: "Google Signup",
-          description: "You have successfully signed in with Google.",
+          title: "Welcome!",
+          description: "Please complete your profile setup.",
           variant: "success",
         });
-        // User not found – navigate to register page
+
+        // Navigate to registration for naew users
         router.push("/(registration)");
       } else {
-        console.log("sddd");
-        // User exists – navigate to home or dashboard
+        const id = data.id;
+        // User exists - sign them in
+        toast({
+          title: "Welcome back!",
+          description: "You have successfully signed in.",
+          variant: "success",
+        });
         signIn(id);
-        router.replace("/"); // adjust as needed
       }
-    } catch (err) {
-      console.error("Error checking user:", err);
-      Alert.alert("Error", "There was a problem checking your account.");
+      //
+    } catch (e) {
+      console.log(e);
+      toast({
+        title: "Sign in error",
+        description: "Could not retrieve user details.",
+        variant: "destructive",
+      });
     }
-  };
+  }
+
+  useEffect(() => {
+    if (session) {
+      router.replace("/(tabs)");
+    }
+  }, [session]);
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
-
       <View style={styles.content}>
         <Logo />
 
+        {/* Avatars Container is for background visuals, doesn't depend on auth state */}
         <View style={styles.avatarsContainer}>
           <Image
             source={require("../../assets/images/Ellipse 1.png")}
@@ -236,7 +247,6 @@ export default function App() {
               top: 300,
               width: 130,
               height: 130,
-
               resizeMode: "contain",
             }}
           />
@@ -265,27 +275,15 @@ export default function App() {
         </View>
 
         <View style={styles.textContainer}>
-          <View
-            style={{
-              flexDirection: "row",
-            }}
-          >
+          <View style={{ flexDirection: "row" }}>
             <Text style={styles.headingConnect}>Connect</Text>
             <Text style={styles.headingText}> with professionals.</Text>
           </View>
-          <View
-            style={{
-              flexDirection: "row",
-            }}
-          >
+          <View style={{ flexDirection: "row" }}>
             <Text style={styles.headingCollaborate}>Collaborate</Text>
             <Text style={styles.headingText}> on projects.</Text>
           </View>
-          <View
-            style={{
-              flexDirection: "row",
-            }}
-          >
+          <View style={{ flexDirection: "row" }}>
             <Text style={styles.headingCreate}>Create</Text>
             <Text style={styles.headingText}> new opportunities.</Text>
           </View>
@@ -300,23 +298,21 @@ export default function App() {
         >
           <TouchableOpacity
             style={styles.getStartedButton}
-            onPress={() => router.push("/login")}
+            onPress={() => router.push("/(auth)/login")} // Navigate to your Clerk login/signup screens
           >
             <Text style={styles.getStartedText}>Get Started</Text>
             <Text> </Text>
             <Ionicons name="arrow-redo-outline" size={24} color="white" />
           </TouchableOpacity>
 
-          <SocialButton
-            provider="google"
-            signInWithGoogle={() => performOAuth("google")}
-          />
+          {/* Conditionally render SocialButton if not currently loading user */}
+          <SocialButton onPress={handleGoogleSignIn} />
         </View>
 
         <View style={styles.actionContainer}>
           <View style={styles.signInContainer}>
             <Text style={styles.signInText}>Already have an account? </Text>
-            <TouchableOpacity onPress={() => router.push("/login")}>
+            <TouchableOpacity onPress={() => router.push("/(auth)/login")}>
               <Text style={styles.signInLink}>Sign in</Text>
             </TouchableOpacity>
           </View>
@@ -326,6 +322,7 @@ export default function App() {
   );
 }
 
+// Styles remain the same
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -341,20 +338,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 40,
   },
-  logoText: {
-    fontSize: 32,
-    fontWeight: "bold",
-    letterSpacing: -1,
-  },
   avatarsContainer: {
     flex: 1,
     position: "relative",
-  },
-  avatarCircle: {
-    position: "absolute",
-    width: 80,
-    height: 80,
-    borderRadius: 40,
   },
   textContainer: {
     marginVertical: 40,
@@ -400,11 +386,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "600",
   },
-  socialButtonsContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 16,
-  },
   socialButton: {
     width: 60,
     height: 60,
@@ -414,10 +395,6 @@ const styles = StyleSheet.create({
     borderColor: "black",
     alignItems: "center",
     justifyContent: "center",
-  },
-  socialButtonText: {
-    fontSize: 18,
-    color: "#000",
   },
   signInContainer: {
     flexDirection: "row",

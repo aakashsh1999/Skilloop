@@ -113,9 +113,20 @@ const WorkExperienceScreen = () => {
     endDate: "", // Format: MM/YYYY
     currentlyWorking: false,
   });
+  const [email, setEmail] = useState("");
   const [isGoogle, setIsGoogle] = useState(false);
   const router = useRouter();
 
+  useEffect(() => {
+    const getEmail = async () => {
+      const mail = await AsyncStorage.getItem("gmail_user");
+      if (mail) {
+        const user = JSON.parse(mail);
+        setEmail(user.email);
+      }
+    };
+    getEmail();
+  }, []);
   const handleChange = (name: string, value: string) => {
     setFormData({
       ...formData,
@@ -340,12 +351,12 @@ const WorkExperienceScreen = () => {
 
     console.log(profile.basicInfo, "sdfsdfsdf");
     const dataToSend = {
-      id: isGoogle.isGoogle ? isGoogle.id : null,
       // Ensure these keys match your backend's expected structure and your Prisma schema
       mobile_number: mobileNumber, // Use mobile from basicInfo
       user_type: profile.userType || "Unknown",
       name: basicInfo.fullName || "Unknown Name", // Use fullName from basicInfo
       gender: basicInfo.gender || "Not Specified",
+      email: email || "",
       age: basicInfo.age ? parseInt(basicInfo.age, 10) : 0,
       location: basicInfo.location || "Unknown Location",
 
@@ -446,9 +457,9 @@ const WorkExperienceScreen = () => {
     }
 
     const dataToSend = {
-      id: isGoogle.isGoogle ? isGoogle.id : null,
       mobile_number: mobileNumber, // Use mobile from basicInfo
       user_type: profile.userType || "Unknown",
+      email: email || "",
       name: basicInfo.fullName || "Unknown Name",
       gender: basicInfo.gender || "Not Specified",
       age: basicInfo.age ? parseInt(basicInfo.age, 10) : 0,

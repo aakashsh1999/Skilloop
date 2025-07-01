@@ -55,7 +55,7 @@ const UserTypeSelection: React.FC = () => {
     setCurrentStep(2);
     router.push({
       pathname: "/(registration)/basic-info",
-      params: { mobile: mobile as string },
+      params: { mobile: mobile || "" },
     });
   };
 

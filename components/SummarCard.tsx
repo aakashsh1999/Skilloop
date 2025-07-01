@@ -9,58 +9,50 @@ import {
   Linking,
   Alert,
 } from "react-native";
-import {
-  Feather,
-  FontAwesome,
-  MaterialCommunityIcons,
-  Ionicons,
-} from "@expo/vector-icons";
-import { ProfileSummaryData } from "@/components/SummarCard";
+import { Feather } from "@expo/vector-icons";
+import { ProfileSummaryData } from "@/components/SummarCard"; // Assuming this path is correct
 import { captureRef } from "react-native-view-shot";
 import * as Sharing from "expo-sharing";
 import * as MediaLibrary from "expo-media-library";
 import QRCode from "react-native-qrcode-svg";
-import * as FileSystem from "expo-file-system";
+// import * as FileSystem from "expo-file-system"; // Not directly used here
 
-interface BusinessCardDisplayProps {
+interface FlippableBusinessCardProps {
   profileData: ProfileSummaryData;
-  canFlip?: boolean;
-  onApprove?: (userId: string) => Promise<any>;
   onChatPress: (profile: ProfileSummaryData) => void;
+  onApprove?: (userId: string) => Promise<any>;
+  canFlip?: boolean; // Add this prop to control the flip mechanism and button visibility
 }
 
 const getSocialIcon = (type: string) => {
-  console.log(type, "asdfd");
   switch (type.toLowerCase()) {
     case "linkedin":
       return {
-        img: require("../assets/linked.png"),
+        img: require("../assets/linked.png"), // Adjust path as needed
         name: "linkedin",
         color: "#0A66C2",
       };
     case "instagram":
       return {
-        img: require("../assets/instagram.png"),
+        img: require("../assets/instagram.png"), // Adjust path as needed
         name: "instagram",
         color: "#E4405F",
       };
-
     case "figma":
       return {
-        img: require("../assets/figma.png"),
-
-        name: "whatsapp",
-        color: "#25D366",
+        img: require("../assets/figma.png"), // Adjust path as needed
+        name: "figma", // Corrected name
+        color: "#1AB7EA", // Corrected color for Figma
       };
     case "upwork":
       return {
-        img: require("../assets/fiver.png"),
+        img: require("../assets/fiver.png"), // Assuming you have an Upwork icon, replaced 'fiver'
         name: "upwork",
         color: "#64BF33",
       };
     case "dribbble":
       return {
-        img: require("../assets/dribble.png"),
+        img: require("../assets/dribble.png"), // Assuming you have a Dribbble icon
         name: "dribbble",
         color: "#EA4C89",
       };
@@ -70,7 +62,6 @@ const getSocialIcon = (type: string) => {
 };
 
 const handleLinkPress = async (url: string) => {
-  console.log(url, "asdasdfdfsdfd");
   if (!url) {
     Alert.alert("Invalid Link", "URL is empty or invalid.");
     return;
@@ -86,14 +77,15 @@ const handleLinkPress = async (url: string) => {
   }
 };
 
-const BusinessCardDisplay: React.FC<BusinessCardDisplayProps> = ({
+const BusinessCard: React.FC<FlippableBusinessCardProps> = ({
   profileData,
-  canFlip = true,
-  onApprove,
   onChatPress,
+  onApprove,
+  canFlip = true, // Default to true, but can be set to false by parent
 }) => {
   const flipAnimation = useRef(new Animated.Value(0)).current;
   const isFlipped = useRef(false);
+  const frontCardRef = useRef<View>(null); // Ref for the front card for capturing
 
   const frontInterpolate = flipAnimation.interpolate({
     inputRange: [0, 180],
@@ -106,7 +98,8 @@ const BusinessCardDisplay: React.FC<BusinessCardDisplayProps> = ({
   });
 
   const handleCardFlip = () => {
-    if (!canFlip) return;
+    if (!canFlip) return; // Prevent flipping if canFlip is false
+
     const toValue = isFlipped.current ? 0 : 180;
     Animated.spring(flipAnimation, {
       toValue,
@@ -139,15 +132,15 @@ const BusinessCardDisplay: React.FC<BusinessCardDisplayProps> = ({
 
   const animatedFrontStyle = [
     styles.card,
+    styles.cardFront,
     { transform: [{ rotateY: frontInterpolate }] },
   ];
   const animatedBackStyle = [
     styles.card,
+    styles.cardBack,
     { transform: [{ rotateY: backInterpolate }] },
   ];
 
-  const cardRef = useRef<View>(null);
-  const frontCardRef = useRef<View>(null); // New ref for the front card
   const [permissionResponse, requestPermission] = MediaLibrary.usePermissions();
 
   useEffect(() => {
@@ -158,17 +151,15 @@ const BusinessCardDisplay: React.FC<BusinessCardDisplayProps> = ({
 
   const handleDownloadCard = async () => {
     if (!frontCardRef.current) {
-      // Use frontCardRef for downloading the front card
       Alert.alert("Error", "Could not get reference to the card.");
       return;
     }
     try {
       const uri = await captureRef(frontCardRef, {
-        // Capture the front card
         format: "png",
         quality: 1,
       });
-      const asset = await MediaLibrary.createAssetAsync(uri);
+      await MediaLibrary.createAssetAsync(uri);
       Alert.alert("Downloaded", "Business card saved to gallery!");
     } catch (error) {
       Alert.alert("Error", "Could not download the card.");
@@ -178,7 +169,6 @@ const BusinessCardDisplay: React.FC<BusinessCardDisplayProps> = ({
 
   const handleShareCard = async () => {
     if (!frontCardRef.current) {
-      // Assuming you've updated to use frontCardRef
       Alert.alert("Error", "Could not get reference to the card.");
       return;
     }
@@ -187,35 +177,36 @@ const BusinessCardDisplay: React.FC<BusinessCardDisplayProps> = ({
         format: "png",
         quality: 1,
       });
-      await Sharing.shareAsync(uri); // This is the key line
+      await Sharing.shareAsync(uri);
     } catch (error) {
       Alert.alert("Error", "Could not share the card.");
       console.error("Share card error:", error);
     }
   };
-  return (
-    <View style={{ width: "100%" }}>
-      <View style={styles.cardWrapper}>
-        {/* Flip Button outside both sides */}
-        {canFlip && (
-          <TouchableOpacity onPress={handleCardFlip} style={styles.flipButton}>
-            <Image
-              source={require("./../assets/images/double-arrow.png")}
-              style={{
-                width: 20,
-                height: 20,
-                transform: isFlipped ? [{ scaleX: -1 }] : [{ scaleX: 1 }], // Flips to point right
-              }}
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
-        )}
+  console.log(profileData, "adfddfs");
 
-        {/* Front Side */}
-        <Animated.View
-          style={[animatedFrontStyle, styles.cardFront]}
-          ref={frontCardRef}
-        >
+  return (
+    <View style={styles.cardWrapper}>
+      {/* Only show the flip button if canFlip is true */}
+      {canFlip && (
+        <TouchableOpacity onPress={handleCardFlip} style={styles.flipButton}>
+          <Image
+            source={require("../assets/images/double-arrow.png")} // Adjust path as needed
+            style={{
+              width: 20,
+              height: 20,
+              transform: isFlipped.current
+                ? [{ rotateY: "180deg" }]
+                : [{ rotateY: "0deg" }],
+            }}
+            resizeMode="contain"
+          />
+        </TouchableOpacity>
+      )}
+
+      {/* Front Side */}
+      <Animated.View style={[animatedFrontStyle]} ref={frontCardRef}>
+        <View style={styles.cardFrontContent}>
           <View style={styles.cardHeader}>
             <Image
               source={{
@@ -250,7 +241,7 @@ const BusinessCardDisplay: React.FC<BusinessCardDisplayProps> = ({
                         style={styles.socialIcon}
                       >
                         <Image
-                          source={iconInfo.img}
+                          source={iconInfo?.img}
                           style={{ width: 30, height: 30 }}
                           resizeMode="contain"
                         />
@@ -262,6 +253,8 @@ const BusinessCardDisplay: React.FC<BusinessCardDisplayProps> = ({
             </View>
           </View>
 
+          {/* Conditional rendering for action buttons */}
+          {/* These buttons should only show if canFlip is false */}
           {!canFlip && (
             <View style={styles.cardActionButtons}>
               {showApproveButton && (
@@ -273,7 +266,7 @@ const BusinessCardDisplay: React.FC<BusinessCardDisplayProps> = ({
                   ]}
                 >
                   <Image
-                    source={require("./../assets/thumb.png")}
+                    source={require("../assets/thumb.png")} // Adjust path as needed
                     style={{ width: 24, height: 24 }}
                     resizeMode="contain"
                   />
@@ -288,7 +281,7 @@ const BusinessCardDisplay: React.FC<BusinessCardDisplayProps> = ({
                   ]}
                 >
                   <Image
-                    source={require("./../assets/message.png")}
+                    source={require("../assets/message.png")} // Adjust path as needed
                     style={{ width: 24, height: 24 }}
                     resizeMode="contain"
                   />
@@ -296,11 +289,13 @@ const BusinessCardDisplay: React.FC<BusinessCardDisplayProps> = ({
               )}
             </View>
           )}
-        </Animated.View>
+        </View>
+      </Animated.View>
 
-        {/* Back Side */}
-        <Animated.View style={[animatedBackStyle, styles.cardBack]}>
-          <View ref={cardRef} style={styles.qrContainer}>
+      {/* Back Side */}
+      <Animated.View style={[animatedBackStyle]}>
+        <View style={styles.cardBackContent}>
+          <View style={styles.qrContainer}>
             <QRCode
               value={JSON.stringify({
                 name: profileData.name,
@@ -308,14 +303,10 @@ const BusinessCardDisplay: React.FC<BusinessCardDisplayProps> = ({
                 company: profileData.business_card?.company,
                 portfolio: profileData.business_card?.portfolio,
                 socialProfiles: profileData.business_card?.socialProfiles,
-              })} // or a URL to profile
+              })}
               size={120}
             />
-            <View
-              style={{
-                marginLeft: 30,
-              }}
-            >
+            <View style={{ marginLeft: 30 }}>
               <Text style={styles.qrLabel}>{profileData.name}</Text>
               <View style={{ flexDirection: "row", marginTop: 16 }}>
                 <TouchableOpacity
@@ -354,27 +345,16 @@ const BusinessCardDisplay: React.FC<BusinessCardDisplayProps> = ({
               </View>
             </View>
           </View>
-          <Text
-            style={[
-              styles.qrSubLabel,
-              {
-                position: "absolute",
-                bottom: 10,
-                fontFamily: "Montserrat",
-                marginHorizontal: "auto",
-                textDecorationLine: "underline",
-                color: "gray",
-              },
-            ]}
-          >
-            Scan and Save or Share {profileData.name}'s Card{" "}
+          <Text style={[styles.qrSubLabel]}>
+            Scan and Save or Share {profileData.name}'s Card
           </Text>
-        </Animated.View>
-      </View>
+        </View>
+      </Animated.View>
     </View>
   );
 };
 
+// Styles remain the same
 const styles = StyleSheet.create({
   cardWrapper: {
     width: "100%",
@@ -403,13 +383,23 @@ const styles = StyleSheet.create({
   cardFront: {
     justifyContent: "space-between",
   },
+  cardFrontContent: {
+    flex: 1,
+    justifyContent: "space-between",
+    paddingHorizontal: 10,
+  },
   cardBack: {
     justifyContent: "center",
     alignItems: "center",
   },
+  cardBackContent: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
   cardHeader: {
     flexDirection: "row",
-
     alignItems: "center",
   },
   cardAvatar: {
@@ -433,7 +423,6 @@ const styles = StyleSheet.create({
     color: "#666",
     fontFamily: "Montserrat",
   },
-
   portfolioLink: {
     fontSize: 16,
     color: "#007AFF",
@@ -459,7 +448,6 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     justifyContent: "center",
     borderWidth: 1,
-
     alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -497,7 +485,12 @@ const styles = StyleSheet.create({
   qrSubLabel: {
     fontSize: 14,
     color: "#666",
+    textDecorationLine: "underline",
+    position: "absolute",
+    fontFamily: "Montserrat",
+    bottom: -12,
     textAlign: "center",
+    width: "100%", // Ensure it takes available width for centering
   },
   flipButton: {
     position: "absolute",
@@ -512,4 +505,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default BusinessCardDisplay;
+export default BusinessCard;

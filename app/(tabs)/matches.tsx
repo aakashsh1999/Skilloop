@@ -20,10 +20,10 @@ import {
 } from "@/api/index"; // Assuming these are correctly imported
 import { useSession } from "@/utils/AuthContext";
 import { router } from "expo-router";
-import SummaryCard, { ProfileSummaryData } from "@/components/SummarCard"; // Import SummaryCard
-import BusinessCardDisplay from "@/components/SummarCard";
+import { ProfileSummaryData } from "@/components/SummarCard"; // Import SummaryCard
 import { Image } from "react-native";
-import BusinessCardFlippable from "@/components/SummarCard";
+import SimpleBusinessCard from "@/components/SimpleBusinessCard";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 // 1. ENHANCE CombinedProfileData: Add `matchId`
 interface CombinedProfileData extends ProfileSummaryData {
   sortDate: string; // The date used for sorting (likedAt or matchedAt)
@@ -115,6 +115,7 @@ const LikesYouScreen = () => {
             gender: match.gender,
             avatar: match.avatar || match.profile_image,
             profile_image: match.profile_image,
+            business_card: match.business_card,
             title: match.title || "No title provided",
             website: match.website,
             socialLinks: socialLinks,
@@ -257,7 +258,7 @@ const LikesYouScreen = () => {
 
   // Handler for opening chat screen
   const openChatScreen = useCallback(
-    (user: CombinedProfileData) => {
+    async (user: CombinedProfileData) => {
       console.log("openChatScreen", user);
       if (!loggedInUserId) {
         Alert.alert("Error", "User session not found.");
@@ -268,6 +269,7 @@ const LikesYouScreen = () => {
         return;
       }
 
+      await AsyncStorage.setItem("otherUserData", JSON.stringify(user));
       // 4. MODIFY openChatScreen: Pass the matchId
       router.push({
         pathname: "/chat/[id]",
@@ -342,28 +344,14 @@ const LikesYouScreen = () => {
       <FlatList
         data={combinedProfiles}
         keyExtractor={(item) => item.id}
-        // Custom renderItem to handle passing specific animation and state to BusinessCardDisplay
-        renderItem={({ item }) => {
-          // Find the specific state for this profile
-          const cardState = cardStates.find((state) => state.id === item.id);
-
-          if (!cardState) {
-            // This should ideally not happen if initializeCardStates is called correctly
-            return null;
-          }
-
-          return (
-            <BusinessCardDisplay
-              profileData={item}
-              flipAnimation={cardState.flipAnimation}
-              isFlipped={cardState.isFlipped}
-              canFlip={false} // You can set this dynamically if needed
-              onPressFlip={() => toggleCardFlip(item.id)} // Pass the userId to toggle
-              onApprove={() => handleApproveMatch(item.id)}
-              onChatPress={() => openChatScreen(item)}
-            />
-          );
-        }}
+        renderItem={({ item }) => (
+          <SimpleBusinessCard
+            profileData={item}
+            onApprove={handleApproveMatch}
+            showActionButtons={true}
+            onChatPress={openChatScreen}
+          />
+        )}
         ListFooterComponent={renderFooter}
         ListEmptyComponent={renderEmptyComponent}
         contentContainerStyle={
@@ -387,6 +375,7 @@ const LikesYouScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
     backgroundColor: "white",
     paddingHorizontal: 24,
   },
@@ -399,7 +388,6 @@ const styles = StyleSheet.create({
     paddingBottom: 15,
     backgroundColor: "white",
     flexDirection: "row",
-    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
     alignItems: "center",
     borderBottomColor: "#e0e0e0",
     marginBottom: 10,

@@ -16,17 +16,15 @@ import {
 import * as Linking from "expo-linking";
 
 import Svg, { Path } from "react-native-svg";
-import { Feather } from "@expo/vector-icons"; // Import Feather from Expo Vector Icons
 import OtpModal from "@/components/OTPModal";
 import { API_BASE_URL } from "@/env";
 import { useRouter } from "expo-router";
 import { useSession } from "@/utils/AuthContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { supabase } from "@/lib/supabase";
-import { makeRedirectUri, startAsync } from "expo-auth-session";
-import * as QueryParams from "expo-auth-session/build/QueryParams";
 import * as WebBrowser from "expo-web-browser";
 import { toast } from "@/hooks/useToast";
+import { useOAuth, useUser } from "@clerk/clerk-expo";
+import { supabase } from "@/lib/supabase";
 
 // --- PhoneInput Component (Inline) ---
 interface PhoneInputProps {
@@ -35,53 +33,6 @@ interface PhoneInputProps {
 }
 
 WebBrowser.maybeCompleteAuthSession();
-
-// Generate redirect URI
-const redirectTo = makeRedirectUri({
-  scheme: "skilloop",
-  path: "welcome",
-  useProxy: true,
-});
-
-const createSessionFromUrl = async (url: string) => {
-  const { params, errorCode } = QueryParams.getQueryParams(url);
-
-  if (errorCode) throw new Error(errorCode);
-
-  const { access_token, refresh_token } = params;
-  if (!access_token) return;
-
-  const { data, error } = await supabase.auth.setSession({
-    access_token,
-    refresh_token,
-  });
-
-  if (error) throw error;
-  return data.session;
-};
-
-// Generic OAuth login handler
-const performOAuth = async (provider: "github" | "google") => {
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider,
-    options: {
-      redirectTo,
-      skipBrowserRedirect: true,
-    },
-  });
-
-  if (error) throw error;
-
-  const res = await WebBrowser.openAuthSessionAsync(
-    data?.url ?? "",
-    redirectTo
-  );
-
-  if (res.type === "success") {
-    const { url } = res;
-    return createSessionFromUrl(url);
-  }
-};
 
 const PhoneInput: React.FC<PhoneInputProps> = ({
   onPhoneChange,
@@ -399,9 +350,12 @@ const AuthForm: React.FC = () => {
   const [phone, setPhone] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [otpModalVisible, setOtpModalVisible] = useState(false);
-  const { signIn } = useSession();
+  const { signIn, session } = useSession();
   const [mobileWithCode, setMobileWithCode] = useState(""); // store full mobile with code
-  const router = useRouter(); // Change this to your real backend base URL
+  const router = useRouter(); // Change this to your real backend base URL'
+  const { user, isLoaded } = useUser(); // useUser hook to get user details
+  const { startOAuthFlow } = useOAuth({ strategy: "oauth_google" });
+  const [isLoadingUser, setIsLoadingUser] = useState(false); // State to track if we're trying to get user details
 
   // Function to send OTP request
   const handlePhoneSubmit = async () => {
@@ -489,31 +443,61 @@ const AuthForm: React.FC = () => {
     setIsLoading(false);
   };
 
-  const url = Linking.useURL();
-  // Handle deep links
-  useEffect(() => {
-    if (url) {
-      createSessionFromUrl(url).then((s) => {
-        if (s) handleSession(s);
-      });
-    }
-  }, [url]);
-
-  // Handle new session and store tokens
-  const handleSession = async (s: any) => {
-    console.log("handleSession", s);
-
-    const { user } = s;
-    const id = user?.id;
-
-    if (!id) return;
+  const handleGoogleSignIn = async () => {
+    setIsLoadingUser(true); // Start loading user data
     try {
-      console.log("checkSession", id);
-      // Check if user exists in your custom `profiles` or `users` table
+      const result = await startOAuthFlow();
+
+      if (result?.createdSessionId) {
+        await result.setActive({ session: result.createdSessionId });
+        // Now that the session is active, useUser should eventually populate
+        // We'll handle the next steps in the useEffect below that watches `user` and `isLoaded`
+      } else {
+        // Handle case where OAuth flow didn't return a session ID
+        toast({
+          title: "Sign in failed",
+          description: "No session returned from Google.",
+          variant: "destructive",
+        });
+        setIsLoadingUser(false); // Reset loading state
+      }
+    } catch (err) {
+      console.error("Google sign-in error:", err);
+      Alert.alert("Error", "Google sign-in failed.");
+      setIsLoadingUser(false); // Reset loading state on error
+    }
+  };
+
+  // This useEffect now specifically handles what to do *after* the session is created
+  // and the user object is populated.
+  useEffect(() => {
+    // Only proceed if Clerk is loaded, a user object is available, and we are currently in a loading state from the OAuth flow
+    if (isLoaded && user && isLoadingUser) {
+      const email = user.primaryEmailAddress?.emailAddress;
+      const name = user.fullName;
+      const imageUrl = user.imageUrl;
+      console.log("user", user?.primaryEmailAddress?.emailAddress);
+      initiateSignUpLogin(email);
+    }
+  }, [isLoaded, user, isLoadingUser, router]);
+
+  async function initiateSignUpLogin(email: string) {
+    if (!email) {
+      // Fallback if essential user info is missing
+      toast({
+        title: "Sign in error",
+        description: "Could not retrieve user details.",
+        variant: "destructive",
+      });
+      setIsLoadingUser(false); // Reset loading state
+      return;
+    }
+
+    try {
       const { data, error } = await supabase
-        .from("users") // or 'profiles', depending on your schema
+        .from("users")
         .select("*")
-        .eq("id", id as string)
+        .eq("email", email)
         .single();
 
       if (error && error.code !== "PGRST116") {
@@ -521,33 +505,51 @@ const AuthForm: React.FC = () => {
       }
 
       if (!data) {
-        await AsyncStorage.removeItem("session");
+        // User not found - this is a new Google user
+
         await AsyncStorage.setItem(
           "gmail_user",
           JSON.stringify({
-            id: id,
+            email: email,
             isGoogle: true,
           })
         );
         toast({
-          title: "Google Signup",
-          description: "You have successfully signed in with Google.",
+          title: "Welcome!",
+          description: "Please complete your profile setup.",
           variant: "success",
         });
-        // User not found – navigate to register page
+
+        // Navigate to registration for naew users
         router.push("/(registration)");
       } else {
-        console.log("sddd");
-        // User exists – navigate to home or dashboard
-        signIn(id);
-        router.replace("/"); // adjust as needed
-      }
-    } catch (err) {
-      console.error("Error checking user:", err);
-      Alert.alert("Error", "There was a problem checking your account.");
-    }
-  };
+        const id = data.id;
 
+        console.log("working");
+        // User exists - sign them in
+        toast({
+          title: "Welcome back!",
+          description: "You have successfully signed in.",
+          variant: "success",
+        });
+        signIn(id);
+      }
+      //
+    } catch (e) {
+      console.log(e);
+      toast({
+        title: "Sign in error",
+        description: "Could not retrieve user details.",
+        variant: "destructive",
+      });
+    }
+  }
+
+  useEffect(() => {
+    if (session) {
+      router.replace("/(tabs)");
+    }
+  }, [session]);
   return (
     <View style={authFormStyles.container}>
       <PhoneInput onPhoneChange={setPhone} />
@@ -566,7 +568,7 @@ const AuthForm: React.FC = () => {
         <SocialButton
           provider="google"
           onPress={() => {
-            performOAuth("google");
+            handleGoogleSignIn();
           }}
         />
       </View>

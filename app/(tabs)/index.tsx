@@ -134,7 +134,6 @@ const ProfileScreen = () => {
 
   const handleUserCardSwipe = useCallback(
     async (type: "like" | "dislike", userId: string) => {
-      console.log(`User ${userId} was ${type} (gesture detected)!`);
 
       if (type === "like") {
         try {
@@ -224,7 +223,13 @@ const ProfileScreen = () => {
 
   // Consolidate the rendering logic to always include the ScrollView
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "white" }}>
+    <SafeAreaView
+      style={{
+        flex: 1,
+        backgroundColor: "white",
+        paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
+      }}
+    >
       <View style={styles.headerContainer}>
         <Image
           source={require("../../assets/images/logo.png")}
@@ -302,9 +307,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "white",
-    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
     paddingHorizontal: 16,
-    paddingVertical: 15,
     marginBottom: 20,
     zIndex: 1,
   },
@@ -319,8 +322,7 @@ const styles = StyleSheet.create({
   scrollViewContent: {
     backgroundColor: "white",
     flexGrow: 1,
-    // Add these two styles to ensure content takes full height
-    // and correctly positions when there are no cards
+
     minHeight:
       Dimensions.get("window").height -
       (Platform.OS === "android" ? StatusBar.currentHeight : 40) -

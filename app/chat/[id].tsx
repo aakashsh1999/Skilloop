@@ -20,6 +20,8 @@ import { io, Socket } from "socket.io-client";
 import { API_BASE_URL } from "@/env";
 import { ChatAPI, ChatMessage as ApiChatMessage } from "@/api/index";
 import { Feather, Ionicons, MaterialIcons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import BusinessCard from "@/components/SummarCard";
 
 interface LocalChatMessage extends ApiChatMessage {
   senderType: "me" | "other" | "system" | "suggestion";
@@ -56,6 +58,9 @@ const ChatScreen = () => {
   const [loading, setLoading] = useState(true);
   const [socketConnected, setSocketConnected] = useState(false);
   const [isChatEmpty, setIsChatEmpty] = useState(true);
+  const [otherUserData, setOtherUserData] = useState<any>(null);
+
+  console.log(otherUserData, "adfddfs");
 
   const socketRef = useRef<Socket | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
@@ -85,6 +90,18 @@ const ChatScreen = () => {
       return () => clearTimeout(scrollTimeout);
     }
   }, [messages]);
+
+  async function getOtherUserData() {
+    const otherData = await JSON.parse(
+      await AsyncStorage.getItem("otherUserData")
+    );
+    if (otherData) {
+      setOtherUserData(otherData);
+    }
+  }
+  useEffect(() => {
+    getOtherUserData();
+  }, []);
 
   useEffect(() => {
     setIsChatEmpty(messages.length === 0);
@@ -234,60 +251,6 @@ const ChatScreen = () => {
     sendMessage(messageText);
   };
 
-  // const MessageBubble = ({ message }: { message: LocalChatMessage }) => {
-  //   const isMyMessage = message.senderId === loggedInUserId;
-
-  //   return (
-  //     <View
-  //       style={[
-  //         styles.messageBubble,
-  //         isMyMessage ? styles.myMessage : styles.otherMessage,
-  //       ]}
-  //     >
-  //       {!isMyMessage && (
-  //         <Image
-  //           source={{ uri: message.senderAvatar }}
-  //           style={{
-  //             width: 50,
-  //             height: 50,
-  //             borderRadius: 25,
-  //             shadowColor: "#000",
-  //             shadowOffset: { width: 0, height: 4 },
-  //             shadowOpacity: 0.3,
-  //             shadowRadius: 5,
-  //             elevation: 5,
-  //             position: "absolute",
-  //             borderWidth: 1,
-  //             left: -30,
-  //             zIndex: -1,
-  //           }}
-  //         />
-  //       )}
-  //       <Text
-  //         style={[
-  //           styles.messageText,
-  //           isMyMessage ? styles.myMessageText : styles.otherMessageText,
-  //         ]}
-  //       >
-  //         {message.message}
-  //       </Text>
-  //       <View style={styles.messageFooter}>
-  //         <Text
-  //           style={isMyMessage ? styles.myMessageTime : styles.otherMessageTime}
-  //         >
-  //           {new Date(message.createdAt).toLocaleTimeString([], {
-  //             hour: "2-digit",
-  //             minute: "2-digit",
-  //           })}
-  //         </Text>
-  //         {isMyMessage && message.messageStatus === "sending" && (
-  //           <Text style={styles.messageStatus}>Sending...</Text>
-  //         )}
-  //       </View>
-  //     </View>
-  //   );
-  // };
-
   const MessageBubble = ({ message }: { message: LocalChatMessage }) => {
     const isMyMessage = message.senderId === loggedInUserId;
 
@@ -380,9 +343,9 @@ const ChatScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar
+      {/* <StatusBar
         barStyle={Platform.OS === "ios" ? "dark-content" : "default"}
-      />
+      /> */}
 
       <View style={styles.header}>
         <TouchableOpacity
@@ -399,18 +362,9 @@ const ChatScreen = () => {
       </View>
 
       <View style={styles.contactInfo}>
-        <Image
-          source={{ uri: userAvatar || "https://via.placeholder.com/50" }}
-          style={styles.contactAvatar}
-        />
-        <View style={styles.contactDetails}>
-          <Text style={styles.contactName}>{userName}</Text>
-        </View>
-        <View style={styles.contactActions}>
-          <Text style={styles.actionIcon}>📞</Text>
-          <Text style={styles.actionIcon}>📹</Text>
-          <Text style={styles.actionIcon}>ℹ️</Text>
-        </View>
+        {otherUserData && (
+          <BusinessCard profileData={otherUserData} showActionButtons={false} />
+        )}
       </View>
 
       <ScrollView
@@ -466,35 +420,6 @@ const ChatScreen = () => {
         keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
         style={styles.inputContainer}
       >
-        {/* <View style={styles.inputRow}>
-          <TouchableOpacity style={styles.attachButton}>
-            <Text style={styles.attachIcon}>📎</Text>
-          </TouchableOpacity>
-          <TextInput
-            style={styles.textInput}
-            value={messageInput}
-            onChangeText={setMessageInput}
-           
-            multiline
-            returnKeyType="send"
-            onSubmitEditing={() => sendMessage(messageInput)}
-            blurOnSubmit={false}
-          />
-          <TouchableOpacity
-            style={styles.sendButton}
-            onPress={() => sendMessage(messageInput)}
-            disabled={!messageInput.trim()}
-          >
-            <Text
-              style={[
-                styles.sendIcon,
-                !messageInput.trim() && styles.sendIconDisabled,
-              ]}
-            >
-              ➤
-            </Text>
-          </TouchableOpacity>
-        </View> */}
         <View style={styles.iconRow}>
           <TouchableOpacity style={styles.iconBtn}>
             <Image
@@ -553,7 +478,7 @@ const ChatScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8F8F8",
+    backgroundColor: "white",
   },
   centerContent: {
     flex: 1,
@@ -566,8 +491,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     backgroundColor: "#fff",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#e0e0e0",
   },
   backButtonTouchable: {
     padding: 8,
@@ -583,16 +506,9 @@ const styles = StyleSheet.create({
   contactInfo: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
     padding: 16,
-    marginHorizontal: 16,
     marginVertical: 8,
     borderRadius: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
   },
   contactAvatar: {
     width: 50,
@@ -620,7 +536,7 @@ const styles = StyleSheet.create({
   messagesContainer: {
     flex: 1,
     paddingHorizontal: 16,
-    backgroundColor: "#F8F8F8",
+    backgroundColor: "white",
   },
   messagesContentContainer: {
     paddingBottom: 20,
@@ -766,7 +682,7 @@ const styles2 = StyleSheet.create({
   quickActionButtonsContainer: {
     padding: 20,
     alignItems: "center",
-    backgroundColor: "#F8F8F8",
+    backgroundColor: "white",
     marginTop: 10,
   },
   quickActionButton: {

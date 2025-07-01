@@ -9,13 +9,13 @@
     "scheme": "skilloop",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "assetBundlePatterns": ["**/*"],
-
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.aakashsh1999.Skilloop"
     },
-
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
@@ -30,13 +30,11 @@
         "android.permission.WRITE_EXTERNAL_STORAGE"
       ]
     },
-
     "web": {
       "bundler": "metro",
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
-
     "plugins": [
       "expo-router",
       [
@@ -47,22 +45,19 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
-      ]
+      ],
+      "expo-font"
     ],
-
     "experiments": {
       "typedRoutes": true
     },
-
     "extra": {
       "router": {},
       "eas": {
         "projectId": "38efe3bc-6960-4cf5-862b-ec30cca47fdd"
       }
     },
-
     "runtimeVersion": "1.0.0",
-
     "updates": {
       "url": "https://u.expo.dev/38efe3bc-6960-4cf5-862b-ec30cca47fdd"
     }

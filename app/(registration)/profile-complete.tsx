@@ -118,7 +118,7 @@ const ProfileComplete = () => {
               <Text style={styles.goHomeButtonText}>Go to Home</Text>
             </View>
           </ActionButton>
-        </View>{" "}
+        </View>
         {/* End contentWrapper */}
       </View>
     </SafeAreaView>

@@ -1,3 +1,4 @@
+// ProfileImages.tsx (This is the file name from your previous context, assuming you're editing the same file)
 import React, { useState, useCallback } from "react";
 import {
   Alert,
@@ -28,7 +29,7 @@ const BasicInformation: React.FC = () => {
   const { profile, updateBasicInfo, setCurrentStep, completeStep } =
     useProfileStore();
   const { mobile } = useLocalSearchParams(); // Assuming mobile might come from route params during initial signup flow
-  const [coords, setCoords] = useState<any>(null);
+  const [coords, setCoords] = useState<any>(null); // State to store coordinates if needed elsewhere
 
   // Get mobile from store if available, otherwise use route param
   const initialMobile =
@@ -72,6 +73,8 @@ const BasicInformation: React.FC = () => {
 
   // --- Modified function to get current location and geocode to address string ---
   const handleGetLocation = async () => {
+    // Prevent multiple simultaneous fetches
+    if (isFetchingLocation) return;
     setIsFetchingLocation(true);
     try {
       // 1. Request permissions
@@ -98,8 +101,6 @@ const BasicInformation: React.FC = () => {
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
       });
-      console.log("Reverse geocode result:", geocodeResult);
-
       console.log("Reverse geocode result:", geocodeResult);
 
       // 4. Extract and format the address string
@@ -172,19 +173,17 @@ const BasicInformation: React.FC = () => {
       return;
     }
 
-    console.log(location, " oddd");
     // Prepare data to update the store
     const dataToSave = {
       fullName: formData.fullName,
       age: formData.age,
       gender: formData.gender,
       location: formData.location, // Only save the address string
+      // If you need to save coords, you'll need to adjust the store's updateBasicInfo signature
+      // For now, we assume only the address string is stored in basicInfo.location
       latitude: coords?.latitude,
       longitude: coords?.longitude,
       mobile: formData.mobile, // Pass mobile from state (initially from route param or store)
-      // Do NOT include latitude or longitude in updateBasicInfo
-      // latitude: null, // Or explicitly null if necessary based on store signature
-      // longitude: null, // Or explicitly null if necessary based on store signature
     };
 
     // Update the store with the formData
@@ -253,6 +252,7 @@ const BasicInformation: React.FC = () => {
             style={[styles.input, { justifyContent: "center" }]} // Added justifyContent
             onPress={() => setShowGenderModal(true)}
           >
+            {/* Ensure the display text is also wrapped in Text */}
             <Text style={{ color: formData.gender ? "#000" : "#9CA3AF" }}>
               {formData.gender
                 ? genderOptions.find((g) => g.value === formData.gender)?.label
@@ -268,8 +268,6 @@ const BasicInformation: React.FC = () => {
           >
             <View style={styles.modalOverlay}>
               <View style={styles.modalContainer}>
-                {/* Optional: Add a title to the gender modal */}
-                {/* <Text style={styles.modalTitle}>Select Gender</Text> */}
                 <FlatList
                   data={genderOptions}
                   keyExtractor={(item) => item.value}
@@ -281,19 +279,19 @@ const BasicInformation: React.FC = () => {
                       }}
                       style={styles.modalItem}
                     >
+                      {/* Ensure the modal item text is also wrapped in Text */}
                       <Text style={styles.modalItemText}>{item.label}</Text>
                     </TouchableOpacity>
                   )}
-                  // Optional: Add a separator between items
                   ItemSeparatorComponent={() => (
                     <View style={styles.modalSeparator} />
                   )}
                 />
-                {/* Cancel Button for modal */}
                 <TouchableOpacity
                   onPress={() => setShowGenderModal(false)}
                   style={styles.modalCancelButton}
                 >
+                  {/* Ensure the cancel button text is also wrapped in Text */}
                   <Text style={styles.modalCancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
               </View>
@@ -301,32 +299,41 @@ const BasicInformation: React.FC = () => {
           </Modal>
         </View>
 
-        {/* Location Name & Get Location Button */}
+        {/* Location Name & Get Location Text Link */}
         <View style={styles.field}>
           <Text style={styles.label}>
             Location<Text style={styles.required}>*</Text>
           </Text>
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              formData.location === "" && styles.placeholderText,
+            ]} // Style placeholder if empty
             placeholder="e.g., New York, NY"
             value={formData.location}
             onChangeText={(text) => handleChange("location", text)}
             returnKeyType="done"
-            // Make this input readOnly if location was auto-filled, or allow editing?
-            // Allowing editing gives user flexibility if auto-detected location is wrong
+            // Option: Make this input readOnly if location was auto-filled and you don't want manual edits
             // editable={!isFetchingLocation} // Option: Disable while fetching
           />
-          {/* Button to get current location */}
+          {/* Text component styled to look like a tappable link */}
           <TouchableOpacity
             onPress={handleGetLocation}
-            style={styles.getLocationButton}
-            disabled={isFetchingLocation} // Disable while loading
+            style={styles.getLocationTextContainer} // New container for styling the text
+            disabled={isFetchingLocation}
           >
             {isFetchingLocation ? (
-              <ActivityIndicator color="#fff" size="small" /> // White spinner on blue button
+              <View style={styles.getLocationLoading}>
+                <ActivityIndicator color="#007AFF" size="small" />{" "}
+                {/* Blue spinner */}
+                <Text style={styles.getLocationLoadingText}>
+                  {" "}
+                  Fetching location...
+                </Text>
+              </View>
             ) : (
-              <Text style={styles.getLocationButtonText}>
-                Use Current Location
+              <Text style={styles.getLocationText}>
+                {formData.location ? "Change Location" : "Use Current Location"}
               </Text>
             )}
           </TouchableOpacity>
@@ -355,7 +362,8 @@ const appStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   contentContainer: {
     flexGrow: 1, // Allows content to expand
-    padding: 10, // Apply padding here
+    paddingHorizontal: 10, // Padding for the scrollable content
+    paddingBottom: 30, // Add some bottom padding for the last button
     backgroundColor: "#fff",
   },
   field: {
@@ -363,52 +371,54 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    color: "#4B5563",
+    color: "#4B5563", // Tailwind grey-700
     marginBottom: 8,
+    fontFamily: "Inter-Medium", // Assuming you have custom fonts
   },
   required: {
-    color: "red",
+    color: "#EF4444", // Tailwind red-500
     fontSize: 14,
+    fontFamily: "Inter-Medium",
   },
   input: {
     borderWidth: 1,
-    borderColor: "#E5E7EB", // Lighter border
-    borderRadius: 8, // Slightly rounded corners
-    paddingHorizontal: 16,
-    paddingVertical: Platform.OS === "ios" ? 12 : 10, // Adjusted padding
-    fontSize: 16,
-    backgroundColor: "#F9FAFB", // Light background color
-    color: "#1F2937", // Darker text color
-    minHeight: 48, // Minimum height for touchability/consistency
-  },
-  disabledInput: {
-    backgroundColor: "#E5E7EB", // Different background for disabled input
-    color: "#6B7280", // Gray text
-  },
-  // --- New styles for Location Button ---
-  getLocationButton: {
-    marginTop: 10, // Space above button
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: "#007AFF", // Primary button color
+    borderColor: "#E5E7EB", // Tailwind grey-200
     borderRadius: 8, // Rounded corners
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1, // Optional border
-    borderColor: "#007AFF", // Match background
-  },
-  getLocationButtonText: {
-    color: "white", // White text color
+    paddingHorizontal: 16,
+    paddingVertical: Platform.OS === "ios" ? 12 : 10,
     fontSize: 16,
-    fontWeight: "600",
+    backgroundColor: "#F9FAFB", // Tailwind grey-50
+    color: "#1F2937", // Tailwind grey-900
+    fontFamily: "Inter-Regular", // Assuming you have custom fonts
+    minHeight: 48, // Consistent height
   },
-  coordinatesText: {
-    // Style no longer strictly needed for display, but keep
-    marginTop: 8,
-    fontSize: 12,
-    color: "#666",
+  placeholderText: {
+    color: "#9CA3AF", // Tailwind grey-400 for placeholder text
   },
-  // --- End Location Button Styles ---
+  // --- Styles for the "Use Current Location" / "Change Location" Text Link ---
+  getLocationTextContainer: {
+    marginTop: 10, // Space above the text link
+    alignItems: "flex-start", // Align text to the left
+  },
+  getLocationText: {
+    fontSize: 14, // Slightly smaller font size
+    color: "#007AFF", // Standard blue for links (iOS blue)
+    fontFamily: "Inter-SemiBold", // Slightly bolder than regular text
+    textDecorationLine: "underline", // Make it look like a link
+  },
+  getLocationLoading: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-start", // Align to the left
+    paddingVertical: 8, // Give it some vertical space to align with expected text height
+  },
+  getLocationLoadingText: {
+    fontSize: 14,
+    color: "#007AFF", // Blue color for loading text
+    fontFamily: "Inter-SemiBold",
+    marginLeft: 8, // Space between spinner and text
+  },
+  // --- End Location Text Link Styles ---
 
   // --- Modal Styles ---
   modalOverlay: {
@@ -418,51 +428,39 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     backgroundColor: "white",
-    paddingVertical: 10, // Reduced vertical padding
-    paddingHorizontal: 20, // Add horizontal padding
+    paddingVertical: 10,
+    paddingHorizontal: 20,
     borderTopLeftRadius: 12,
     borderTopRightRadius: 12,
     maxHeight: "50%",
   },
-  modalTitle: {
-    // Optional: Title style for modal
-    fontSize: 18,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginVertical: 10,
-  },
   modalItem: {
     paddingVertical: 14,
-    // borderBottomWidth: 1, // Removed border bottom, using ItemSeparator
-    // borderBottomColor: "#e5e7eb",
-    alignItems: "center", // Center text horizontally
+    alignItems: "center",
   },
   modalSeparator: {
-    // Style for separator between items
     height: 1,
     backgroundColor: "#E5E7EB",
-    marginHorizontal: -20, // Extend separator to modal edges
+    marginHorizontal: -20,
   },
   modalItemText: {
     fontSize: 16,
     textAlign: "center",
-    color: "#333", // Dark text
+    color: "#1F2937", // Dark text
+    fontFamily: "Inter-Medium",
   },
   modalCancelButton: {
-    // Style for the Cancel button
     paddingVertical: 14,
-    marginTop: 10, // Space above cancel button
-    // borderTopWidth: 1, // Removed, handled by marginTop and layout
-    // borderTopColor: '#e5e7eb',
-    alignItems: "center", // Center text
+    marginTop: 10,
+    alignItems: "center",
     backgroundColor: "#F2F2F2", // Light gray background
-    borderRadius: 8, // Rounded corners
+    borderRadius: 8,
   },
   modalCancelButtonText: {
-    // Style for Cancel button text
     fontSize: 16,
     color: "#007AFF", // Standard blue color
     fontWeight: "600",
+    fontFamily: "Inter-SemiBold",
   },
   // --- End Modal Styles ---
 });

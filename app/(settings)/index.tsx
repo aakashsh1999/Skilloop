@@ -12,6 +12,7 @@ import {
   StatusBar,
   Image,
 } from "react-native";
+import { SignedOut } from "@clerk/clerk-expo";
 
 // Icon component - replace with your preferred icon library
 const Icon = ({ name, size = 20, color = "#666" }) => (

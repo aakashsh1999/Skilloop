@@ -99,7 +99,6 @@ const UserCard = React.forwardRef<any, UserCardProps>(
     const scale = useRef(new Animated.Value(1)).current;
     // REMOVE isScrolling state as PanResponder is removed
     // const [isScrolling, setIsScrolling] = useState(false);
-    console.log(userData, "dd");
 
     // Reset position and scale when userData changes (a new card is shown)
     useEffect(() => {

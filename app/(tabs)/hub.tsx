@@ -191,8 +191,6 @@ export default function HubScreen() {
   // --- Render Main Hub Content ---
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
@@ -380,6 +378,7 @@ export default function HubScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
     backgroundColor: "#f8f9fa", // Light background color
   },
   centeredContainer: {
